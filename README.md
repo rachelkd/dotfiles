@@ -15,14 +15,14 @@ brew install stow
 ## Installation
 
 ```
-$ git clone https://github.com/rachelkd/dotfiles.git
-$ cd dotfiles
+git clone https://github.com/rachelkd/dotfiles.git
+cd dotfiles
 ```
 
 Then, use GNU Stow to symlink the dotfiles:
 
 ```
-$ stow .
+stow .
 ```
 
 ## Tips
