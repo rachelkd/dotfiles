@@ -16,7 +16,7 @@ config = {
 	tab_bar_at_bottom = false,
 	font_size = 12.5,
 	font = wezterm.font("JetBrainsMono Nerd Font", { weight = "Bold" }),
-	enable_tab_bar = false,
+	enable_tab_bar = true,
 	window_padding = {
 		left = 8,
 		right = 8,
