@@ -173,7 +173,10 @@ alt-shift-8 = 'move-node-to-workspace 8'
 alt-shift-tab = 'move-workspace-to-monitor --wrap-around next'
 
 # See: https://nikitabobko.github.io/AeroSpace/commands#mode
-alt-shift-semicolon = 'mode service'
+alt-shift-semicolon = [
+    'mode service',
+    'exec-and-forget sketchybar --trigger aerospace_mode_change',
+]
 
 alt-a = 'exec-and-forget open -a /Applications/Arc.app'
 alt-o = 'exec-and-forget open -a /Applications/Obsidian.app'
@@ -193,22 +196,55 @@ alt-shift-cmd-ctrl-backtick = 'exec-and-forget aerospace list-workspaces --monit
 # 'service' binding mode declaration.
 # See: https://nikitabobko.github.io/AeroSpace/guide#binding-modes
 [mode.service.binding]
-esc = ['reload-config', 'mode main']
-r = ['flatten-workspace-tree', 'mode main'] # reset layout
+
+esc = [
+    'reload-config',
+    'mode main',
+    'exec-and-forget sketchybar --trigger aerospace_mode_change',
+]
+r = [
+    'flatten-workspace-tree',
+    'mode main',
+    'exec-and-forget sketchybar --trigger aerospace_mode_change',
+]
 f = [
     'layout floating tiling',
     'mode main',
-] # Toggle between floating and tiling layout
-backspace = ['close-all-windows-but-current', 'mode main']
+    'exec-and-forget sketchybar --trigger aerospace_mode_change',
+
+]
+
+# Toggle between floating and tiling layout
+backspace = [
+    'close-all-windows-but-current',
+    'mode main',
+    'exec-and-forget sketchybar --trigger aerospace_mode_change',
+]
 
 # sticky is not yet supported https://github.com/nikitabobko/AeroSpace/issues/2
 #s = ['layout sticky tiling', 'mode main']
 
-alt-shift-h = ['join-with left', 'mode main']
-alt-shift-j = ['join-with down', 'mode main']
-alt-shift-k = ['join-with up', 'mode main']
+alt-shift-h = [
+    'join-with left',
+    'mode main',
+    'exec-and-forget sketchybar --trigger aerospace_mode_change',
+]
+alt-shift-j = [
+    'join-with down',
+    'mode main',
+    'exec-and-forget sketchybar --trigger aerospace_mode_change',
+]
+alt-shift-k = [
+    'join-with up',
+    'mode main',
+    'exec-and-forget sketchybar --trigger aerospace_mode_change',
+]
 alt-shift-l = ['join-with right', 'mode main']
 
 down = 'volume down'
 up = 'volume up'
-shift-down = ['volume set 0', 'mode main']
+shift-down = [
+    'volume set 0',
+    'mode main',
+    'exec-and-forget sketchybar --trigger aerospace_mode_change',
+]
