@@ -219,6 +219,14 @@ alt-a = 'exec-and-forget open -a /Applications/Arc.app'
 alt-o = 'exec-and-forget open -a /Applications/Obsidian.app'
 alt-w = 'exec-and-forget open -a /Applications/WezTerm.app'
 
+# Toggle menu bar visibility (between auto-hide and always show)
+alt-shift-cmd-ctrl-m = '''exec-and-forget osascript -e '
+tell application "System Events"
+    tell dock preferences
+        set currentStatus to autohide menu bar
+        set autohide menu bar to not currentStatus
+    end tell
+end tell' '''
 alt-shift-cmd-ctrl-tab = 'exec-and-forget aerospace list-workspaces --monitor focused --empty no | aerospace workspace --wrap-around next'
 alt-shift-cmd-ctrl-backtick = 'exec-and-forget aerospace list-workspaces --monitor focused --empty no | aerospace workspace --wrap-around prev'
 
