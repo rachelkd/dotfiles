@@ -1,9 +1,12 @@
 #!/bin/bash
 
-STATE="$(echo "$INFO" | jq -r '.state')"
+# Get Spotify state and track info
+STATE=$(osascript -e 'tell application "Spotify" to get player state' 2>/dev/null)
 if [ "$STATE" = "playing" ]; then
-    MEDIA="$(echo "$INFO" | jq -r '.title + " - " + .artist')"
-    sketchybar --set $NAME label="$MEDIA" drawing=on
+  TRACK=$(osascript -e 'tell application "Spotify" to get name of current track' 2>/dev/null)
+  ARTIST=$(osascript -e 'tell application "Spotify" to get artist of current track' 2>/dev/null)
+  LABEL="$TRACK - $ARTIST"
+  sketchybar --set $NAME label="$LABEL" drawing=on
 else
-    sketchybar --set $NAME drawing=off
+  sketchybar --set $NAME drawing=off
 fi
