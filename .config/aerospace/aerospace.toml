@@ -195,6 +195,7 @@ alt-shift-cmd-ctrl-backtick = 'exec-and-forget aerospace list-workspaces --monit
 
 # 'service' binding mode declaration.
 # See: https://nikitabobko.github.io/AeroSpace/guide#binding-modes
+# NOTE: Remember to add 'exec-and-forget sketchybar --trigger aerospace_mode_change' command after 'mode main'
 [mode.service.binding]
 
 esc = [
