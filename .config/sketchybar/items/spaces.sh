@@ -23,21 +23,22 @@ for sid in $(aerospace list-workspaces --all); do
         icon="$sid" \
         label.padding_right=7 \
         icon.padding_left=7 \
-        icon.padding_right=4 \
+        icon.padding_right=7 \
         background.drawing=on \
-        label.font="sketchybar-app-font:Regular:12.0" \
+        label.font="sketchybar-app-font:Regular:13.0" \
         background.color="$BACKGROUND" \
         icon.color="$ACCENT_COLOR_2" \
         label.color="$ACCENT_COLOR_2" \
         background.corner_radius=5 \
-        background.height=20 \
+        background.border_color="$ACCENT_COLOR_2" \
         label.drawing=on \
         click_script="aerospace workspace $sid" \
         script="$CONFIG_DIR/plugins/aerospace.sh $sid"
 done
 
 sketchybar --add item space_separator left \
-    --set space_separator icon="|" \
+    --set space_separator icon="" \
+    icon.font="JetBrainsMono Nerd Font:ExtraBold:14.0" \
     icon.color="$BACKGROUND" \
     icon.padding_left=4 \
     icon.padding_right=7 \

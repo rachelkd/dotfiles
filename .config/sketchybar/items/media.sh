@@ -35,13 +35,14 @@ echo "$displays_json" | jq -c '.[]' | while read -r display; do
     sketchybar --add item "$item_name" "$position" \
         --set "$item_name" \
         display="$display_id" \
-        label.color="$ACCENT_COLOR" \
+        label.color="$ACCENT_COLOR_3" \
         label.max_chars=20 \
-        icon.padding_left=0 \
+        label.padding_right=6 \
         scroll_texts=on \
         icon=􀑪 \
-        icon.color="$ACCENT_COLOR" \
-        background.drawing=off \
+        icon.color="$ACCENT_COLOR_3" \
+        background.drawing=on \
+        background.border_color="$ACCENT_COLOR_3" \
         script="$PLUGIN_DIR/media.sh" \
         --subscribe "$item_name" media_change spotify_change
 

@@ -3,17 +3,19 @@
 default=(
     padding_left=4
     padding_right=4
-    icon.font="JetBrainsMono Nerd Font:Bold:12.0"
-    label.font="JetBrainsMono Nerd Font:Bold:12.0"
+    icon.font="JetBrainsMono Nerd Font:Bold:14.0"
+    label.font="JetBrainsMono Nerd Font:Bold:13.0"
     icon.color="$ACCENT_COLOR"
     label.color="$ACCENT_COLOR"
     icon.padding_left=4
     icon.padding_right=4
     label.padding_left=4
     label.padding_right=4
+    background.border_width=2
+    background.border_color="$ACCENT_COLOR"
     background.color="$ITEM_BG_COLOR"
     background.corner_radius=5
-    background.height=20
+    background.height=24
     background.drawing=off
 )
 

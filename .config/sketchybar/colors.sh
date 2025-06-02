@@ -4,11 +4,19 @@ export WHITE=0xffffffff
 
 export TRANSPARENT=0x00000000
 
-export BAR_COLOR=0xe0191724
+# -- Rose Pine --
+# export BAR_COLOR=0xe0191724  # Rose Pine 88%
+export BAR_COLOR=0x04191724
 export ITEM_BG_COLOR=0xff191724
-export ACCENT_COLOR=0xffc4a7e7
-export ACCENT_COLOR_2=0xffeb6f92
-export MUTED=0xff6e6a86
+export ACCENT_COLOR=0xffc4a7e7   # iris (lilac)
+export ACCENT_COLOR_2=0xffebbcba # rose (light pink)
+export ACCENT_COLOR_3=0xff9ccfd8 # foam (light blue)
+export ACCENT_COLOR_4=0xffeb6f92 # love (hot pink)
+export TEXT_COLOR=0xffe0def4     # white
+export MUTED=0xff6e6a86          # muted
+export HIGHLIGHT_LOW=0xff21202e  # highlight low
+export HIGHLIGHT_MED=0xff403d52  # highlight med
+export OVERLAY_COLOR=0xff26233a  # temporary panels
 export BACKGROUND=0xff191724
 
 # -- Gruv Box --

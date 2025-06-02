@@ -6,7 +6,7 @@ bar=(
     margin=0
     y_offset=0
     corner_radius=0
-    blur_radius=20
+    blur_radius=8
     color="$BAR_COLOR"
 )
 

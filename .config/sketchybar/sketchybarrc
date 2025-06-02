@@ -8,6 +8,8 @@ source "$CONFIG_DIR/colors.sh"
 source "$CONFIG_DIR/bar.sh"
 source "$CONFIG_DIR/defaults.sh"
 
+source "$ITEM_DIR/apple.sh"
+
 source "$ITEM_DIR/spaces.sh"
 source "$ITEM_DIR/front_app.sh"
 
@@ -28,5 +30,6 @@ source "$ITEM_DIR/battery.sh"
 source "$ITEM_DIR/cpu.sh"
 source "$ITEM_DIR/caffeinate.sh"
 
+sketchybar --hotload true
 ##### Force all scripts to run the first time (never do this in a script) #####
 sketchybar --update

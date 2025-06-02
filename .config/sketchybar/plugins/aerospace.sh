@@ -12,9 +12,10 @@ if [ "$SENDER" == "mouse.entered" ]; then
     fi
     sketchybar --set "$NAME" \
         background.drawing=on \
-        label.color="$ACCENT_COLOR_2" \
-        icon.color="$ACCENT_COLOR_2" \
-        background.color="$BACKGROUND"
+        label.color="$HIGHLIGHT_MED" \
+        icon.color="$HIGHLIGHT_MED" \
+        background.border_color=$TRANSPARENT \
+        background.color="$TRANSPARENT"
     exit 0
 fi
 
@@ -24,9 +25,10 @@ if [ "$SENDER" == "mouse.exited" ]; then
     fi
     sketchybar --set "$NAME" \
         background.drawing=off \
-        label.color="$MUTED" \
-        icon.color="$MUTED" \
-        background.color="$TRANSPARENT"
+        label.color="$BACKGROUND" \
+        icon.color="$BACKGROUND" \
+        background.color="$TRANSPARENT" \
+        background.border_color="$TRANSPARENT"
     exit 0
 fi
 
@@ -36,7 +38,7 @@ APPS_INFO=$(aerospace list-windows --workspace "$1" --json --format "%{monitor-a
 
 IFS=$'\n'
 for sid in $(echo "$APPS_INFO" | jq -r "map ( .\"app-name\" ) | .[]"); do
-    icons+=$("$CONFIG_DIR/plugins/icon_map_fn.sh" "$sid")
+    icons+=$("$CONFIG_DIR/plugins/icon_map.sh" "$sid")
     icons+="  "
 done
 
@@ -62,6 +64,8 @@ if [ -z "$icons" ]; then
             label="$icons" \
             label.color="$ACCENT_COLOR_2" \
             icon.color="$ACCENT_COLOR_2" \
+            background.border_color="$ACCENT_COLOR_2" \
+            background.border_width=2 \
             background.color="$BACKGROUND"
     else
         sketchybar --set "$NAME" drawing=off
@@ -79,6 +83,7 @@ else
             label="$icons" \
             label.color="$ACCENT_COLOR_2" \
             icon.color="$ACCENT_COLOR_2" \
+            background.border_color="$ACCENT_COLOR_2" \
             background.color="$BACKGROUND"
     else
         sketchybar --set "$NAME" \
@@ -86,9 +91,9 @@ else
             drawing=on \
             label="$icons" \
             background.drawing=off \
-            label.color="$MUTED" \
-            icon.color="$MUTED" \
+            label.color="$BACKGROUND" \
+            icon.color="$BACKGROUND" \
+            background.border_color="$TRANSPARENT" \
             background.color="$TRANSPARENT"
     fi
 fi
-
