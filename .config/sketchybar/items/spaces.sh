@@ -4,7 +4,7 @@ sketchybar --add item aerospace_mode left \
     --subscribe aerospace_mode aerospace_mode_change \
     --set aerospace_mode icon="" \
     script="$CONFIG_DIR/plugins/aerospace_mode.sh" \
-    icon.color="$MUTED" \
+    icon.color="$BACKGROUND" \
     icon.padding_left=4 \
     drawing=off
 
