@@ -6,7 +6,7 @@ export TRANSPARENT=0x00000000
 
 # -- Rose Pine --
 # export BAR_COLOR=0xe0191724  # Rose Pine 88%
-export BAR_COLOR=0x04191724
+export BAR_COLOR=0x00191724
 export ITEM_BG_COLOR=0xff191724
 export ACCENT_COLOR=0xffc4a7e7   # iris (lilac)
 export ACCENT_COLOR_2=0xffebbcba # rose (light pink)
