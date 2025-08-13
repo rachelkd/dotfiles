@@ -33,16 +33,22 @@ apple_lock=(
 
 sketchybar --add item apple.logo left \
     --set apple.logo "${apple_logo[@]}" \
-    \
-    --add item apple.prefs popup.apple.logo \
-    --set apple.prefs "${apple_prefs[@]}" \
-    \
-    --add item apple.activity popup.apple.logo \
-    --set apple.activity "${apple_activity[@]}" \
-    \
-    --add item apple.lock popup.apple.logo \
-    --set apple.lock "${apple_lock[@]}" \
     --set apple.logo popup.background.drawing=on \
     popup.background.color="$ITEM_BG_COLOR" \
     popup.background.corner_radius=5 \
-    popup.y_offset=10
+    popup.y_offset=10 \
+    \
+    --add item apple.prefs popup.apple.logo \
+    --set apple.prefs "${apple_prefs[@]}" \
+    icon.color="$ACCENT_COLOR_4" \
+    label.color="$ACCENT_COLOR_4" \
+    \
+    --add item apple.activity popup.apple.logo \
+    --set apple.activity "${apple_activity[@]}" \
+    icon.color="$ACCENT_COLOR_4" \
+    label.color="$ACCENT_COLOR_4" \
+    \
+    --add item apple.lock popup.apple.logo \
+    --set apple.lock "${apple_lock[@]}" \
+    icon.color="$ACCENT_COLOR_4" \
+    label.color="$ACCENT_COLOR_4"
