@@ -15,6 +15,10 @@ if [ -f '/Users/rachel/google-cloud-sdk/completion.zsh.inc' ]; then . '/Users/ra
 # The next line updates PATH for TeX Live 2024 to enable latexindent and other tools
 export PATH="/usr/local/texlive/2024/bin/universal-darwin:$PATH"
 
+# export PATH="/usr/local/anaconda3/bin:$PATH"  # commented out by conda initialize
+# export PATH="/opt/homebrew/anaconda3/bin:$PATH"  # commented out by conda initialize
+export PATH="/opt/homebrew/opt/jupyterlab/bin/jupyter-lab:$PATH"
+
 # Set the directory we want to store zinit and plugins
 ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
 
@@ -82,3 +86,20 @@ alias c='clear'
 # Shell integrations
 eval "$(fzf --zsh)"
 eval "$(zoxide init --cmd cd zsh)"
+
+# >>> conda initialize >>>
+# !! Contents within this block are managed by 'conda init' !!
+__conda_setup="$('/opt/homebrew/anaconda3/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/opt/homebrew/anaconda3/etc/profile.d/conda.sh" ]; then
+        . "/opt/homebrew/anaconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/opt/homebrew/anaconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+# <<< conda initialize <<<
+
+export PATH="/opt/homebrew/opt/qt@5/bin:$PATH"
