@@ -90,9 +90,9 @@ outer.right = 0
 
 [workspace-to-monitor-force-assignment]
 1 = ['built-in', 'secondary']
-2 = ['c27j', 'built-in']
-3 = ['c27j', 'built-in']
-4 = ['c27j', 'built-in']
+2 = ['c27j', 'g27cq4', 'built-in']
+3 = ['c27j', 'g27cq4', 'built-in']
+4 = ['c27j', 'g27cq4', 'built-in']
 
 # 'main' binding mode declaration
 # See: https://nikitabobko.github.io/AeroSpace/guide#binding-modes
