@@ -67,6 +67,13 @@ config = {
 			format = "mailto:$0",
 		},
 	},
+	keys = {
+		{
+			key = "Enter",
+			mods = "SHIFT",
+			action = wezterm.action({ SendString = "\x1b\r" }),
+		},
+	},
 }
 
 return config
