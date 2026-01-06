@@ -83,6 +83,11 @@ alias ls='ls --color'
 alias vim='nvim'
 alias c='clear'
 
+# Claude Code wrapper to fix zoxide compatibility
+claude() {
+  SHELL=/bin/bash command claude "$@"
+}
+
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
 __conda_setup="$('/opt/homebrew/anaconda3/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
