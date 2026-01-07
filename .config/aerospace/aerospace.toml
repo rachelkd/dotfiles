@@ -156,6 +156,7 @@ alt-5 = 'workspace 5'
 alt-6 = 'workspace 6'
 alt-7 = 'workspace 7'
 alt-8 = 'workspace 8'
+alt-9 = 'workspace 9'
 
 # See: https://nikitabobko.github.io/AeroSpace/commands#move-node-to-workspace
 alt-shift-1 = 'move-node-to-workspace 1'
@@ -166,6 +167,7 @@ alt-shift-5 = 'move-node-to-workspace 5'
 alt-shift-6 = 'move-node-to-workspace 6'
 alt-shift-7 = 'move-node-to-workspace 7'
 alt-shift-8 = 'move-node-to-workspace 8'
+alt-shift-9 = 'move-node-to-workspace 9'
 
 # See: https://nikitabobko.github.io/AeroSpace/commands#workspace-back-and-forth
 # alt-tab = 'workspace-back-and-forth'
@@ -190,8 +192,8 @@ tell application "System Events"
         set autohide menu bar to not currentStatus
     end tell
 end tell' '''
-alt-shift-cmd-ctrl-tab = 'exec-and-forget aerospace list-workspaces --monitor focused --empty no | aerospace workspace --wrap-around next'
-alt-shift-cmd-ctrl-backtick = 'exec-and-forget aerospace list-workspaces --monitor focused --empty no | aerospace workspace --wrap-around prev'
+alt-shift-cmd-ctrl-tab = 'exec-and-forget aerospace list-workspaces --monitor focused --empty no | aerospace workspace --wrap-around next --stdin'
+alt-shift-cmd-ctrl-backtick = 'exec-and-forget aerospace list-workspaces --monitor focused --empty no | aerospace workspace --wrap-around prev --stdin'
 
 # 'service' binding mode declaration.
 # See: https://nikitabobko.github.io/AeroSpace/guide#binding-modes
