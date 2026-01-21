@@ -9,7 +9,6 @@ after-login-command = []
 # You can use it to add commands that run after AeroSpace startup.
 # 'after-startup-command' is run after 'after-login-command'
 # Available commands : https://nikitabobko.github.io/AeroSpace/commands
-
 # Run Sketchybar together with AeroSpace
 # sketchbar has a built-in detection of already running process,
 # so it won't be run twice on AeroSpace restart
@@ -182,7 +181,7 @@ alt-shift-semicolon = [
 
 alt-a = 'exec-and-forget open -a /Applications/Arc.app'
 alt-o = 'exec-and-forget open -a /Applications/Obsidian.app'
-alt-w = 'exec-and-forget open -a /Applications/WezTerm.app'
+alt-w = 'exec-and-forget open -a /Applications/Ghostty.app'
 
 # Toggle menu bar visibility (between auto-hide and always show)
 alt-shift-cmd-ctrl-m = '''exec-and-forget osascript -e '
@@ -251,3 +250,8 @@ shift-down = [
     'mode main',
     'exec-and-forget sketchybar --trigger aerospace_mode_change',
 ]
+
+
+[[on-window-detected]]
+if.app-id = "com.mitchellh.ghostty"
+run = ["layout tiling"]
