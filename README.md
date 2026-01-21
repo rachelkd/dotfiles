@@ -27,4 +27,16 @@ stow .
 
 ## Tips
 
-Use `stow --adopt .` to adopt a folder if you try to stow a folder that already exists. Note that this will copy your files in `$HOME` to the dotfiles directory, and replace files in dotfiles.
+### Adding a new config to dotfiles
+
+1. Create the directory structure in dotfiles:
+   ```
+   mkdir -p .config/newapp
+   ```
+
+2. Use stow with --adopt to move files from HOME into dotfiles:
+   ```
+   stow --adopt .
+   ```
+
+This will move the existing files from `~/.config/newapp` into `~/dotfiles/.config/newapp` and replace them with symlinks.
