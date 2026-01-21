@@ -1,0 +1,23 @@
+theme = Rose Pine
+font-family = "JetBrainsMono Nerd Font Mono"
+font-style = SemiBold
+
+adjust-cell-height = 20%
+
+window-inherit-working-directory = true
+
+window-padding-x = 10
+window-padding-y = 10
+window-colorspace = "display-p3"
+window-padding-balance = true
+window-save-state = always
+
+macos-titlebar-style = transparent
+
+background-opacity = 0.85
+background-blur-radius = 40
+quit-after-last-window-closed = true
+
+maximize = true
+
+confirm-close-surface = false
