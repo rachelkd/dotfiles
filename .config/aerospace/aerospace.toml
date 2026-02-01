@@ -216,7 +216,6 @@ f = [
 
 ]
 
-# Toggle between floating and tiling layout
 backspace = [
     'close-all-windows-but-current',
     'mode main',
@@ -254,4 +253,4 @@ shift-down = [
 
 [[on-window-detected]]
 if.app-id = "com.mitchellh.ghostty"
-run = ["layout tiling"]
+run = ["layout floating"]
