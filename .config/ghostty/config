@@ -1,6 +1,5 @@
 theme = Catppuccin Mocha
-font-family = "JetBrainsMono Nerd Font Mono"
-font-style = SemiBold
+font-family = "JetBrainsMono Nerd Font"
 
 adjust-cell-height = 20%
 
