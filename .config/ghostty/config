@@ -1,4 +1,6 @@
-theme = Catppuccin Mocha
+theme = light:Everforest Light Med,dark:Catppuccin Mocha
+window-theme = "auto"
+
 font-family = "JetBrainsMono Nerd Font"
 
 adjust-cell-height = 20%
