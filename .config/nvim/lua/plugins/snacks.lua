@@ -5,6 +5,7 @@ return {
     lazy = false,
     ---@type snacks.Config
     opts = {
+      image = {},
       explorer = {
         -- your explorer configuration comes here
         -- or leave it empty to use the default settings
