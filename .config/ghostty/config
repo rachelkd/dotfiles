@@ -1,5 +1,6 @@
 theme = light:Everforest Light Med,dark:Catppuccin Mocha
-window-theme = "auto"
+window-theme = "dark"
+# unfocused-split-opacity = 1
 
 font-family = "JetBrainsMono Nerd Font"
 
