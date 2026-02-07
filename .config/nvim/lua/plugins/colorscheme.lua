@@ -36,11 +36,11 @@ return {
     lazy = false,
     priority = 1000,
     config = function()
-      -- Configure Everforest BEFORE loading the colorscheme
       vim.g.everforest_transparent_background = 2
       vim.g.everforest_enable_italic = true
       vim.g.everforest_background = "medium" -- 'hard', 'medium', 'soft'
       vim.g.everforest_better_performance = 1
+      vim.cmd.colorscheme("everforest")
 
       -- Auto-switch themes based on system appearance
       vim.api.nvim_create_autocmd("OptionSet", {
@@ -64,10 +64,10 @@ return {
           local palette = vim.fn["everforest#get_palette"](config.background, config.colors_override)
 
           -- Get the normal text color
-          local normal_fg = palette.fg[1]
+          local grey1_fg = palette.grey1[1]
 
           -- Override Snacks picker highlight groups for hidden/ignored files
-          vim.api.nvim_set_hl(0, "SnacksPickerPathHidden", { fg = normal_fg })
+          vim.api.nvim_set_hl(0, "SnacksPickerPathHidden", { fg = grey1_fg })
           -- vim.api.nvim_set_hl(0, "SnacksPickerPathIgnored", { fg = normal_fg })
           -- vim.api.nvim_set_hl(0, "SnacksPickerDirectory", { fg = normal_fg })
           -- vim.api.nvim_set_hl(0, "SnacksPickerFile", { fg = normal_fg })
@@ -75,7 +75,7 @@ return {
           -- Fix untracked git file color (default too washed out)
           -- Using grey1 for better visibility while keeping distinction from tracked files
           -- values: grey0, grey1, grey2
-          vim.api.nvim_set_hl(0, "SnacksPickerGitStatusUntracked", { fg = palette.grey1[1] })
+          vim.api.nvim_set_hl(0, "SnacksPickerGitStatusUntracked", { fg = grey1_fg })
         end,
       })
     end,
