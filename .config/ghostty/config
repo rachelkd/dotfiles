@@ -23,3 +23,5 @@ quit-after-last-window-closed = true
 maximize = true
 
 confirm-close-surface = false
+clipboard-read = allow
+clipboard-write = allow
