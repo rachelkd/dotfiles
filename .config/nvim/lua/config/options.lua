@@ -30,3 +30,9 @@ end
 
 -- Route all yanks through the + register so they go via the OSC 52 provider above.
 vim.opt.clipboard = "unnamedplus"
+
+vim.filetype.add({
+  extension = {
+    ddl = "sql",
+  },
+})
