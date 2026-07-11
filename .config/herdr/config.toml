@@ -1,0 +1,13 @@
+onboarding = false
+[ui]
+agent_panel_sort = "spaces"
+
+[ui.toast]
+delivery = "herdr"
+
+[theme]
+name = "rose-pine"
+auto_switch = false
+
+[keys]
+last_pane = "prefix+backtick"
