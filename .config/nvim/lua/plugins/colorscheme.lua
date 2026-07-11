@@ -3,12 +3,14 @@ return {
     "LazyVim/LazyVim",
     opts = {
       colorscheme = function()
-        -- Detect system appearance
-        local bg = vim.o.background
-        if bg == "light" then
-          return "rose-pine"
+        -- Pick the scheme by background, then load it via the plugin's own `load()`.
+        -- Using `require(plugin).load()` (rather than `vim.cmd.colorscheme`) forces
+        -- lazy.nvim to load the plugin -- running its opts/setup() -- BEFORE applying,
+        -- so the theme's options (transparency, etc.) are in effect on the first apply.
+        if vim.o.background == "light" then
+          require("rose-pine").colorscheme()
         else
-          return "catppuccin"
+          require("catppuccin").load()
         end
       end,
     },
@@ -16,25 +18,13 @@ return {
   {
     "catppuccin/nvim",
     name = "catppuccin",
-    lazy = false,
-    priority = 1000,
     opts = {
-      flavour = "auto",
-      background = {
-        light = "latte",
-        dark = "mocha",
-      },
       transparent_background = true,
-      float = {
-        transparent = true,
-        solid = false,
-      },
+      float = { transparent = true },
     },
   },
   {
     "sainnhe/everforest",
-    lazy = false,
-    priority = 1000,
     config = function()
       vim.g.everforest_transparent_background = 2
       vim.g.everforest_enable_italic = true
@@ -65,14 +55,8 @@ return {
   {
     "rose-pine/neovim",
     name = "rose-pine",
-    lazy = false,
-    priority = 1000,
     opts = {
-      variant = "auto",
-      dark_variant = "main",
-      styles = {
-        transparency = true,
-      },
+      styles = { transparency = true },
     },
   },
 }
