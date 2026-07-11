@@ -9,11 +9,22 @@ sketchybar --add item aerospace_mode left \
     drawing=off
 
 for sid in $(aerospace list-workspaces --all); do
-    monitor=$(aerospace list-windows --workspace "$sid" --format "%{monitor-appkit-nsscreen-screens-id}")
+    monitor=$(aerospace list-windows --workspace "$sid" --format "%{monitor-id}" | head -n1)
+
+    if [ -z "$monitor" ]; then
+        for mid in $(aerospace list-monitors --format "%{monitor-id}"); do
+            if aerospace list-workspaces --monitor "$mid" | grep -qx "$sid"; then
+                monitor="$mid"
+                break
+            fi
+        done
+    fi
 
     if [ -z "$monitor" ]; then
         monitor="1"
     fi
+
+    monitor=$("$CONFIG_DIR/helpers/monitor_map.sh" "$monitor")
 
     sketchybar --add item space."$sid" left \
         --subscribe space."$sid" aerospace_workspace_change display_change system_woke mouse.entered mouse.exited \

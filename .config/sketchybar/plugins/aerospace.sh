@@ -34,7 +34,7 @@ fi
 
 icons=""
 
-APPS_INFO=$(aerospace list-windows --workspace "$1" --json --format "%{monitor-appkit-nsscreen-screens-id}%{app-name}")
+APPS_INFO=$(aerospace list-windows --workspace "$1" --json --format "%{monitor-id}%{app-name}")
 
 IFS=$'\n'
 for sid in $(echo "$APPS_INFO" | jq -r "map ( .\"app-name\" ) | .[]"); do
@@ -42,13 +42,24 @@ for sid in $(echo "$APPS_INFO" | jq -r "map ( .\"app-name\" ) | .[]"); do
     icons+="  "
 done
 
-for monitor_id in $(echo "$APPS_INFO" | jq -r "map ( .\"monitor-appkit-nsscreen-screens-id\" ) | .[]"); do
+for monitor_id in $(echo "$APPS_INFO" | jq -r "map ( .\"monitor-id\" ) | .[]"); do
     monitor=$monitor_id
 done
 
 if [ -z "$monitor" ]; then
+    for mid in $(aerospace list-monitors --format "%{monitor-id}"); do
+        if aerospace list-workspaces --monitor "$mid" | grep -qx "$1"; then
+            monitor="$mid"
+            break
+        fi
+    done
+fi
+
+if [ -z "$monitor" ]; then
     monitor="1"
 fi
+
+monitor=$("$CONFIG_DIR/helpers/monitor_map.sh" "$monitor")
 
 # When icons is empty, set it to " "
 if [ -z "$icons" ]; then
