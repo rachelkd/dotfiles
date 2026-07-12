@@ -9,4 +9,5 @@ data
 .gitignore
 *pack/
 .DS_Store
+.claude/settings.local.json
 LICENSE
