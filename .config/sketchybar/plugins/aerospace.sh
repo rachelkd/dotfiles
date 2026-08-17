@@ -1,110 +1,35 @@
-#!/usr/bin/env bash
+#!/bin/bash
+# Hover styling for one workspace item. Runs only for mouse.entered / mouse.exited on
+# the item under the cursor, so it stays tiny; workspace contents are repainted
+# elsewhere, in one pass (helpers/spaces_render.sh).
 
-# make sure it's executable with:
-# chmod +x ~/.config/sketchybar/plugins/aerospace.sh
 source "$CONFIG_DIR/colors.sh"
 
-FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused --format "%{workspace}")
+FOCUSED_CACHE="${TMPDIR:-/tmp}/sketchybar_focused_workspace"
 
-if [ "$SENDER" == "mouse.entered" ]; then
-    if [ "$1" = "$FOCUSED_WORKSPACE" ]; then
-        exit 0
-    fi
-    sketchybar --set "$NAME" \
-        background.drawing=on \
-        label.color="$HIGHLIGHT_MED" \
-        icon.color="$HIGHLIGHT_MED" \
-        background.border_color=$TRANSPARENT \
-        background.color="$TRANSPARENT"
-    exit 0
-fi
+# Written by every repaint, so hover needs no aerospace round-trip.
+FOCUSED_WORKSPACE=$(cat "$FOCUSED_CACHE" 2>/dev/null)
+[ -z "$FOCUSED_WORKSPACE" ] &&
+    FOCUSED_WORKSPACE=$(aerospace list-workspaces --focused --format '%{workspace}')
 
-if [ "$SENDER" == "mouse.exited" ]; then
-    if [ "$1" = "$FOCUSED_WORKSPACE" ]; then
-        exit 0
-    fi
-    sketchybar --set "$NAME" \
-        background.drawing=off \
-        label.color="$BACKGROUND" \
-        icon.color="$BACKGROUND" \
-        background.color="$TRANSPARENT" \
-        background.border_color="$TRANSPARENT"
-    exit 0
-fi
+# The focused item has its own styling; leave it alone.
+[ "$1" = "$FOCUSED_WORKSPACE" ] && exit 0
 
-icons=""
-
-APPS_INFO=$(aerospace list-windows --workspace "$1" --json --format "%{monitor-id}%{app-name}")
-
-IFS=$'\n'
-for sid in $(echo "$APPS_INFO" | jq -r "map ( .\"app-name\" ) | .[]"); do
-    icons+=$("$CONFIG_DIR/plugins/icon_map.sh" "$sid")
-    icons+="  "
-done
-
-for monitor_id in $(echo "$APPS_INFO" | jq -r "map ( .\"monitor-id\" ) | .[]"); do
-    monitor=$monitor_id
-done
-
-if [ -z "$monitor" ]; then
-    for mid in $(aerospace list-monitors --format "%{monitor-id}"); do
-        if aerospace list-workspaces --monitor "$mid" | grep -qx "$1"; then
-            monitor="$mid"
-            break
-        fi
-    done
-fi
-
-if [ -z "$monitor" ]; then
-    monitor="1"
-fi
-
-monitor=$("$CONFIG_DIR/helpers/monitor_map.sh" "$monitor")
-
-# When icons is empty, set it to " "
-if [ -z "$icons" ]; then
-    if [ "$1" = "$FOCUSED_WORKSPACE" ]; then
-        sketchybar --animate sin 10 \
-            --set "$NAME" \
-            y_offset=10 y_offset=0 \
-            background.drawing=on
-
+case "$SENDER" in
+    mouse.entered)
         sketchybar --set "$NAME" \
-            display="$monitor" \
-            drawing=on \
-            label="$icons" \
-            label.color="$ACCENT_COLOR_2" \
-            icon.color="$ACCENT_COLOR_2" \
-            background.border_color="$ACCENT_COLOR_2" \
-            background.border_width=2 \
-            background.color="$BACKGROUND"
-    else
-        sketchybar --set "$NAME" drawing=off
-    fi
-else
-    if [ "$1" = "$FOCUSED_WORKSPACE" ]; then
-        sketchybar --animate sin 10 \
-            --set "$NAME" \
-            y_offset=10 y_offset=0 \
-            background.drawing=on
-
+            background.drawing=on \
+            label.color="$HIGHLIGHT_MED" \
+            icon.color="$HIGHLIGHT_MED" \
+            background.border_color="$TRANSPARENT" \
+            background.color="$TRANSPARENT"
+        ;;
+    mouse.exited)
         sketchybar --set "$NAME" \
-            display="$monitor" \
-            drawing=on \
-            label="$icons" \
-            label.color="$ACCENT_COLOR_2" \
-            icon.color="$ACCENT_COLOR_2" \
-            background.border_color="$ACCENT_COLOR_2" \
-            background.color="$BACKGROUND"
-    else
-        sketchybar --set "$NAME" \
-            display="$monitor" \
-            drawing=on \
-            label="$icons" \
             background.drawing=off \
             label.color="$BACKGROUND" \
             icon.color="$BACKGROUND" \
-            background.border_color="$TRANSPARENT" \
-            background.color="$TRANSPARENT"
-    fi
-fi
+            background.color="$TRANSPARENT" \
+            background.border_color="$TRANSPARENT"
+        ;;
+esac

@@ -25,6 +25,19 @@ killall clock 2>/dev/null
 (cd "$CONFIG_DIR/scripts/clock" && make)
 "$CONFIG_DIR/scripts/clock/clock" &
 
+# AeroSpace event reader; --reload re-execs this file, so stop the previous one or
+# copies accumulate. Tracked by pid, never with `pkill -f`: a pattern broad enough to
+# match the reader also matches any unrelated shell with those words in its command
+# line. The reader takes its own lock too, so a racing reload still leaves only one.
+SUBSCRIBER_PIDFILE="${TMPDIR:-/tmp}/sketchybar_aerospace_subscriber.pid"
+OLD_SUBSCRIBER=$(cat "$SUBSCRIBER_PIDFILE" 2>/dev/null)
+if [ -n "$OLD_SUBSCRIBER" ]; then
+    for child in $(pgrep -P "$OLD_SUBSCRIBER" 2>/dev/null); do kill "$child" 2>/dev/null; done
+    kill "$OLD_SUBSCRIBER" 2>/dev/null
+fi
+"$CONFIG_DIR/helpers/aerospace_subscriber.sh" &
+echo $! > "$SUBSCRIBER_PIDFILE"
+
 source "$ITEM_DIR/volume.sh"
 source "$ITEM_DIR/battery.sh"
 source "$ITEM_DIR/cpu.sh"

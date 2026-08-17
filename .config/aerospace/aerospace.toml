@@ -1,6 +1,17 @@
 # Place a copy of this config to ~/.aerospace.toml
 # After that, you can edit ~/.aerospace.toml to your liking
 
+# Opts in to the current config semantics. The one behaviour change from version 1
+# is that 'persistent-workspaces' is no longer inferred from the right hand side of
+# keyboard bindings, so it is spelled out explicitly below.
+config-version = 2
+
+# Workspaces that always exist, even while empty. Under 'config-version = 1' this
+# was derived from the 'workspace'/'move-node-to-workspace' targets in the bindings
+# below, which came to the same 1-9; version 2 defaults it to empty instead, and
+# without this the empty workspaces would vanish from sketchybar.
+persistent-workspaces = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
+
 # You can use it to add commands that run after login to macOS user session.
 # 'start-at-login' needs to be 'true' for 'after-login-command' to work
 # Available commands: https://nikitabobko.github.io/AeroSpace/commands
@@ -47,12 +58,13 @@ on-focused-monitor-changed = ['move-mouse monitor-lazy-center']
 automatically-unhide-macos-hidden-apps = false
 
 
-# Notify Sketchybar about workspace change
-exec-on-workspace-change = [
-    '/bin/bash',
-    '-c',
-    'sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE',
-]
+# Sketchybar is notified over the `aerospace subscribe` socket instead of a
+# callback -- see ~/.config/sketchybar/helpers/aerospace_subscriber.sh. The old
+# 'exec-on-workspace-change' forked /bin/bash and then sketchybar on every switch;
+# a long-lived subscriber costs nothing per switch, gets prevWorkspace for free,
+# and fires exactly once (the callback double-fired on some transitions).
+# The same subscriber watches 'mode-changed', which is why the binding-mode
+# switches below no longer trigger sketchybar by hand.
 
 # [[on-window-detected]]
 # if.app-name-regex-substring = 'messages'
@@ -174,13 +186,10 @@ alt-shift-9 = 'move-node-to-workspace 9'
 alt-shift-tab = 'move-workspace-to-monitor --wrap-around next'
 
 # See: https://nikitabobko.github.io/AeroSpace/commands#mode
-alt-shift-semicolon = [
-    'mode service',
-    'exec-and-forget sketchybar --trigger aerospace_mode_change',
-]
+alt-shift-semicolon = 'mode service'
 
 alt-a = 'exec-and-forget open -a /Applications/Arc.app'
-alt-o = 'exec-and-forget open -a /Applications/Obsidian.app'
+# alt-o = 'exec-and-forget open -a /Applications/Obsidian.app'
 alt-w = 'exec-and-forget open -a /Applications/Ghostty.app'
 
 # Toggle menu bar visibility (between auto-hide and always show)
@@ -196,61 +205,38 @@ alt-shift-cmd-ctrl-backtick = 'exec-and-forget aerospace list-workspaces --monit
 
 # 'service' binding mode declaration.
 # See: https://nikitabobko.github.io/AeroSpace/guide#binding-modes
-# NOTE: Remember to add 'exec-and-forget sketchybar --trigger aerospace_mode_change' command after 'mode main'
+# NOTE: sketchybar picks up mode changes from the 'mode-changed' subscribe event,
+# so these bindings do not need to notify it explicitly.
 [mode.service.binding]
 
-esc = [
-    'reload-config',
-    'mode main',
-    'exec-and-forget sketchybar --trigger aerospace_mode_change',
-]
-r = [
-    'flatten-workspace-tree',
-    'mode main',
-    'exec-and-forget sketchybar --trigger aerospace_mode_change',
-]
-f = [
-    'layout floating tiling',
-    'mode main',
-    'exec-and-forget sketchybar --trigger aerospace_mode_change',
+esc = ['reload-config', 'mode main']
+r = ['flatten-workspace-tree', 'mode main']
+f = ['layout floating tiling', 'mode main']
 
-]
-
-backspace = [
-    'close-all-windows-but-current',
-    'mode main',
-    'exec-and-forget sketchybar --trigger aerospace_mode_change',
-]
+backspace = ['close-all-windows-but-current', 'mode main']
 
 # sticky is not yet supported https://github.com/nikitabobko/AeroSpace/issues/2
 #s = ['layout sticky tiling', 'mode main']
 
-alt-shift-h = [
-    'join-with left',
-    'mode main',
-    'exec-and-forget sketchybar --trigger aerospace_mode_change',
-]
-alt-shift-j = [
-    'join-with down',
-    'mode main',
-    'exec-and-forget sketchybar --trigger aerospace_mode_change',
-]
-alt-shift-k = [
-    'join-with up',
-    'mode main',
-    'exec-and-forget sketchybar --trigger aerospace_mode_change',
-]
+alt-shift-h = ['join-with left', 'mode main']
+alt-shift-j = ['join-with down', 'mode main']
+alt-shift-k = ['join-with up', 'mode main']
 alt-shift-l = ['join-with right', 'mode main']
 
 down = 'volume down'
 up = 'volume up'
-shift-down = [
-    'volume set 0',
-    'mode main',
-    'exec-and-forget sketchybar --trigger aerospace_mode_change',
-]
+shift-down = ['volume set 0', 'mode main']
 
 
 [[on-window-detected]]
 if.app-id = "com.mitchellh.ghostty"
 run = ["layout floating"]
+
+[[on-window-detected]]
+if.app-id = "com.quip.Desktop"
+run = ["layout floating"]
+
+[[on-window-detected]]
+if.app-id = "com.cisco.secureclient.gui"
+run = ["layout floating"]
+
