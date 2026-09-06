@@ -200,8 +200,16 @@ tell application "System Events"
         set autohide menu bar to not currentStatus
     end tell
 end tell' '''
-alt-shift-cmd-ctrl-tab = 'exec-and-forget aerospace list-workspaces --monitor focused --empty no | aerospace workspace --wrap-around next --stdin'
-alt-shift-cmd-ctrl-backtick = 'exec-and-forget aerospace list-workspaces --monitor focused --empty no | aerospace workspace --wrap-around prev --stdin'
+# Cycle only the non-empty workspaces on the focused monitor.
+#
+# '|' is AeroSpace's own pipe operator (0.21.0-Beta+), not the shell's, so both sides
+# are AeroSpace commands and neither takes the 'aerospace' prefix. The old spelling
+# wrapped the whole thing in 'exec-and-forget' and let /bin/sh do the piping; 0.21
+# rewrote the binding parser and now claims '|' itself, which would leave a bare
+# 'aerospace ...' on the right-hand side -- not an AeroSpace command, so the config
+# would fail to load. Running in-process also skips two CLI round-trips per press.
+alt-shift-cmd-ctrl-tab = 'list-workspaces --monitor focused --empty no | workspace --stdin --wrap-around next'
+alt-shift-cmd-ctrl-backtick = 'list-workspaces --monitor focused --empty no | workspace --stdin --wrap-around prev'
 
 # 'service' binding mode declaration.
 # See: https://nikitabobko.github.io/AeroSpace/guide#binding-modes
