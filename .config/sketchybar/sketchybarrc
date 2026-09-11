@@ -21,8 +21,15 @@ source "$ITEM_DIR/media.sh"
 # Add the clock
 # Kill any previous clock helper
 killall clock 2>/dev/null
-# Build the helper
-(cd "$CONFIG_DIR/scripts/clock" && make)
+# Build the helper only when it is missing or a source is newer. Calling `make`
+# unconditionally runs the /usr/bin/make shim on every login, which pops the
+# "command line developer tools" installer dialog whenever xcodebuild is broken.
+CLOCK_DIR="$CONFIG_DIR/scripts/clock"
+if [ ! -x "$CLOCK_DIR/clock" ] \
+    || [ "$CLOCK_DIR/clock.c" -nt "$CLOCK_DIR/clock" ] \
+    || [ "$CONFIG_DIR/scripts/sketchybar.h" -nt "$CLOCK_DIR/clock" ]; then
+    (cd "$CLOCK_DIR" && make)
+fi
 "$CONFIG_DIR/scripts/clock/clock" &
 
 # AeroSpace event reader; --reload re-execs this file, so stop the previous one or
