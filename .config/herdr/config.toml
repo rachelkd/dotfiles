@@ -1,13 +1,19 @@
 onboarding = false
 [ui]
 agent_panel_sort = "spaces"
+pane_gaps = false
 
+status_indicators = "symbols"
 [ui.toast]
 delivery = "herdr"
 
 [theme]
+# Fallback when the host terminal never reports a light/dark scheme.
 name = "rose-pine"
-auto_switch = false
+# Follow Ghostty's appearance: rose-pine in dark, rose-pine-dawn in light.
+auto_switch = true
+dark_name = "rose-pine"
+light_name = "rose-pine-dawn"
 
 [keys]
 last_pane = "prefix+backtick"
