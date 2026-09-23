@@ -2,14 +2,13 @@
 # Repaints every workspace item in a single sketchybar message.
 #
 # This is a sourceable function rather than a script because aerospace_subscriber.sh
-# is long-lived and would otherwise fork a shell and re-parse icon_map.sh (1391
-# lines) on every event. Requires colors.sh to be sourced by the caller.
+# is long-lived and would otherwise fork a shell and re-parse the icon map on every
+# event. Requires colors.sh to be sourced by the caller.
 #
 # Written for bash 3.2 (stock macOS): no associative arrays.
 
-# __icon_map as a function, so mapping an app name costs no process. The explicit ""
-# keeps the trailing lookup in that file from seeing our argv.
-source "$CONFIG_DIR/plugins/icon_map.sh" "" >/dev/null
+# __icon_map as a function, so mapping an app name costs no process.
+source "$CONFIG_DIR/helpers/icon_map.sh"
 
 FOCUSED_CACHE="${TMPDIR:-/tmp}/sketchybar_focused_workspace"
 MONITOR_MAP_CACHE="${TMPDIR:-/tmp}/sketchybar_monitor_map"

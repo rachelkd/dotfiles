@@ -5,6 +5,11 @@ export ITEM_DIR="$CONFIG_DIR/items"
 
 source "$CONFIG_DIR/colors.sh"
 
+# Derive the app icon map from the installed sketchybar-app-font before anything
+# sources it; a no-op unless the font's release changed. Homebrew's python by path:
+# the /usr/bin/python3 shim pops the developer tools dialog when xcodebuild is broken.
+[ -x /opt/homebrew/bin/python3 ] && /opt/homebrew/bin/python3 "$CONFIG_DIR/helpers/gen_icon_map.py"
+
 source "$CONFIG_DIR/bar.sh"
 source "$CONFIG_DIR/defaults.sh"
 
