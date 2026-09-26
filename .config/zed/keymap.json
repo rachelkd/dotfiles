@@ -1,0 +1,52 @@
+// Zed keymap
+//
+// For information on binding keys, see the Zed
+// documentation: https://zed.dev/docs/key-bindings
+//
+// To see the default key bindings run `zed: open default keymap`
+// from the command palette.
+[
+  {
+    "context": "Workspace",
+    "bindings": {
+      // "shift shift": "file_finder::Toggle"
+    },
+  },
+  {
+    "context": "Editor && vim_mode == insert",
+    "bindings": {
+      // "j k": "vim::NormalBefore"
+    },
+  },
+  {
+    "context": "Editor",
+    "bindings": {
+      "cmd-backspace": "editor::DeleteToBeginningOfLine"
+    }
+  },
+  {
+    // JetBrains base keymap binds shift-enter to NewlineBelow, shadowing ExpandExcerpts
+    "context": "Editor && multibuffer",
+    "bindings": {
+      "shift-enter": "editor::ExpandExcerpts"
+    }
+  },
+  {
+    // Vim binds ctrl-y in insert mode to InsertFromAbove
+    "context": "Editor && showing_completions",
+    "bindings": {
+      "ctrl-y": "editor::ConfirmCompletion"
+    }
+  },
+  {
+    "context": "Editor && showing_code_actions",
+    "bindings": {
+      "ctrl-y": "editor::ConfirmCodeAction"
+    }
+  },
+  {
+    "bindings": {
+      "space g j": "git::OpenFileAtHead"
+    }
+  }
+]

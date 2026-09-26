@@ -87,6 +87,14 @@ bindkey -e
 bindkey '^p' history-search-backward
 bindkey '^n' history-search-forward
 
+# Option+Delete stops at each / in a path; Ctrl+W still deletes the whole path
+backward-kill-path-segment() {
+  local WORDCHARS=${WORDCHARS//\/}
+  zle backward-kill-word
+}
+zle -N backward-kill-path-segment
+bindkey '^[^?' backward-kill-path-segment
+
 # ============================================================================
 # Completion Styling
 # ============================================================================
@@ -113,6 +121,16 @@ alias cc='claude'
 # Claude Code wrapper to fix zoxide compatibility
 claude() {
   SHELL=/bin/bash command claude "$@"
+}
+
+# Github CLI PR - make draft default
+gh() {
+    if [[ "$1" == "pr" && "$2" == "create" ]]; then
+        shift 2
+        command gh pr create --draft "$@"
+    else
+        command gh "$@"
+    fi
 }
 
 # ============================================================================

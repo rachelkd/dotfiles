@@ -4,31 +4,15 @@
             "complex_modifications": {
                 "rules": [
                     {
-                        "description": "Toggle Ghostty theme with Cmd+Shift+R",
+                        "description": "Toggle system light/dark appearance with Hyper+R",
                         "manipulators": [
                             {
-                                "conditions": [
-                                    {
-                                        "bundle_identifiers": [
-                                            "^com\\.mitchellh\\.ghostty$"
-                                        ],
-                                        "type": "frontmost_application_if"
-                                    }
-                                ],
                                 "from": {
                                     "key_code": "r",
-                                    "modifiers": { "mandatory": ["command", "shift"] }
+                                    "modifiers": { "mandatory": ["left_command", "left_control", "left_option", "left_shift"] }
                                 },
                                 "to": [
-                                    { "shell_command": "/bin/bash ~/.config/ghostty/toggle-theme.sh && /usr/bin/osascript -e 'display notification \"Theme toggled\" with title \"Ghostty\"'" },
-                                    {
-                                        "hold_down_milliseconds": 300,
-                                        "key_code": "vk_none"
-                                    },
-                                    {
-                                        "key_code": "comma",
-                                        "modifiers": ["command", "shift"]
-                                    }
+                                    { "shell_command": "/bin/bash ~/.config/ghostty/toggle-theme.sh" }
                                 ],
                                 "type": "basic"
                             }

@@ -1,19 +1,25 @@
 #!/usr/bin/env bash
-# Toggle between light and dark window themes
+# Toggle the macOS system appearance between light and dark.
+#
+# Everything that matters already follows the system appearance, so this one
+# flip retints all of them at once:
+#   - Ghostty  via `theme = light:Rose Pine Dawn,dark:Catppuccin Mocha`
+#   - Herdr    via `[theme] auto_switch` (rose-pine / rose-pine-dawn)
+#   - Neovim   via the OptionSet background autocmd
+#
+# The previous version of this script flipped Ghostty's `window-theme` key,
+# which only controls window chrome — it never changed any palette.
 
-# Resolve symlink to get the actual config file
-config_symlink="$HOME/.config/ghostty/config"
-config_file=$(readlink -f "$config_symlink" 2>/dev/null || realpath "$config_symlink" 2>/dev/null || echo "$config_symlink")
+set -euo pipefail
 
-current_theme=$(grep "^window-theme" "$config_file" | awk '{print $3}' | tr -d '"')
+dark=$(osascript \
+  -e 'tell application "System Events" to tell appearance preferences to set dark mode to not dark mode' \
+  -e 'tell application "System Events" to tell appearance preferences to get dark mode')
 
-if [[ "$current_theme" == "light" ]]; then
-  new_theme="dark"
-elif [[ "$current_theme" == "dark" ]]; then
-  new_theme="light"
+if [[ "$dark" == "true" ]]; then
+  mode="Dark"
 else
-  # If "auto" or anything else, default to light
-  new_theme="light"
+  mode="Light"
 fi
 
-sed -i '' "s/^window-theme = \".*\"/window-theme = \"$new_theme\"/" "$config_file"
+osascript -e "display notification \"Switched to $mode\" with title \"Appearance\""

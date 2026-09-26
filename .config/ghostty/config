@@ -1,8 +1,8 @@
 theme = light:Rose Pine Dawn,dark:Catppuccin Mocha
-window-theme = "dark"
 # unfocused-split-opacity = 1
 
-font-family = "JetBrainsMono Nerd Font"
+font-family = "Iosevka"
+font-feature = NWID, ss05
 
 adjust-cell-height = 20%
 
