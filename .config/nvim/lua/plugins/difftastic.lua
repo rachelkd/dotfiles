@@ -13,6 +13,26 @@ return {
         keymaps = { next_hunk = "]h", prev_hunk = "[h" },
       })
 
+      -- open() starts with :tabnew, then swaps its own scratch buffers into the new tab, leaving
+      -- :tabnew's empty [No Name] buffer listed. Wipe any such buffer that open() created.
+      local open = difft.open
+      difft.open = function(...)
+        local last_buf = vim.fn.bufnr("$")
+        open(...)
+        for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+          if
+            buf > last_buf
+            and vim.bo[buf].buflisted
+            and vim.bo[buf].buftype == ""
+            and vim.api.nvim_buf_get_name(buf) == ""
+            and not vim.bo[buf].modified
+            and #vim.fn.win_findbuf(buf) == 0
+          then
+            vim.api.nvim_buf_delete(buf, {})
+          end
+        end
+      end
+
       -- gf normally closes the diff tab before opening the file. Swap its internal close for a
       -- switch to the original tab so the diff stays open and gt returns to it.
       local goto_file = difft.goto_file
