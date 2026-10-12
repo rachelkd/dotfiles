@@ -5,7 +5,8 @@ sketchybar --add item front_app left \
     icon.color="$ACCENT_COLOR_2" \
     icon.font="sketchybar-app-font:Regular:12.0" \
     label.color="$ACCENT_COLOR_2" \
-    label.font="SF Pro:Semibold:13.0" \
+    label.font="Iosevka:Semibold:13.0" \
+    label.font.features=ss14 \
     label.padding_right=7 \
     icon.padding_left=7 \
     icon.padding_right=7 \

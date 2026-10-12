@@ -25,6 +25,8 @@ for sid in $(aerospace list-workspaces --all); do
         --set space."$sid"
         padding_right=0
         icon="$sid"
+        icon.font="Iosevka:Bold:14.0"
+        icon.font.features=ss14
         label.padding_right=7
         icon.padding_left=7
         icon.padding_right=7
