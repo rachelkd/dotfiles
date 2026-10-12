@@ -8,10 +8,21 @@
 // command palette (cmd-shift-p / ctrl-shift-p)
 {
   // Appearance
+  "indent_guides": {
+    "background_coloring": "disabled",
+    "coloring": "indent_aware"
+  },
+  "vim": {
+    "cursor_shape": {
+      "visual": "bar"
+    },
+    "toggle_relative_line_numbers": true,
+    "use_smartcase_find": true
+  },
   "theme": {
     "mode": "dark",
     "light": "Rosé Pine Dawn",
-    "dark": "Catppuccin Mocha"
+    "dark": "cutiepro"
   },
   "icon_theme": {
     "mode": "dark",
@@ -22,14 +33,19 @@
   "buffer_font_family": "Iosevka",
   "buffer_font_fallbacks": ["JetBrainsMono Nerd Font"],
   "buffer_font_size": 13.0,
-  "buffer_font_features": { "NWID": true, "ss05": true },
+  "buffer_font_features": { "NWID": true, "ss04": true },
 
   // Input
   "base_keymap": "JetBrains",
-  "vim_mode": true,
+  "helix_mode": true,
+  "vim_mode": false,
+  "which_key": {
+    "enabled": true,
+    "delay_ms": 150
+  },
 
   // Editor
-  "relative_line_numbers": "enabled",
+  "relative_line_numbers": "disabled",
   "gutter": {
     "line_numbers": true
   },
@@ -57,7 +73,7 @@
 
   // Terminal
   "terminal": {
-    "font_features": { "NWID": true, "ss05": true }
+    "font_features": { "NWID": true, "ss14": true }
   },
 
   // Languages

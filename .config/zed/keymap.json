@@ -48,5 +48,12 @@
     "bindings": {
       "space g j": "git::OpenFileAtHead"
     }
+  },
+  {
+    // Vim binds lone space to WrappingRight, so space chords time out after 1s and close which-key
+    "context": "(vim_mode == helix_normal || vim_mode == helix_select) && !menu",
+    "bindings": {
+      "space": null
+    }
   }
 ]
