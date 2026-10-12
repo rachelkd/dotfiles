@@ -157,3 +157,4 @@ eval "$(starship init zsh)"
 eval "$(fzf --zsh)"
 eval "$(zoxide init --cmd cd zsh)"
 eval "$(rbenv init - zsh)"
+command -v herdr >/dev/null && source <(herdr completion zsh)
