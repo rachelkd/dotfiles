@@ -1,0 +1,6 @@
+// Base markdownlint config for nvim-lint (see lua/plugins/markdown.lua).
+// A project's own .markdownlint* files still apply on top of this.
+{
+  "MD007": { "indent": 4 }, // list indent, matches after/ftplugin/markdown.lua
+  "MD013": false // line-length
+}
