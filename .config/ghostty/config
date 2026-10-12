@@ -2,7 +2,7 @@ theme = light:Rose Pine Dawn,dark:Catppuccin Mocha
 # unfocused-split-opacity = 1
 
 font-family = "Iosevka"
-font-feature = NWID, ss05
+font-feature = NWID, ss14
 
 adjust-cell-height = 20%
 
@@ -25,3 +25,5 @@ maximize = true
 confirm-close-surface = false
 clipboard-read = allow
 clipboard-write = allow
+
+macos-icon = glass
