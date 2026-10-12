@@ -45,15 +45,12 @@
     }
   },
   {
-    "bindings": {
-      "space g j": "git::OpenFileAtHead"
-    }
-  },
-  {
-    // Vim binds lone space to WrappingRight, so space chords time out after 1s and close which-key
+    // Vim binds lone space to WrappingRight, so space chords time out after 1s and close which-key.
+    // Space chords live here, not in a context-free block, or space lags in the terminal too.
     "context": "(vim_mode == helix_normal || vim_mode == helix_select) && !menu",
     "bindings": {
-      "space": null
+      "space": null,
+      "space g j": "git::OpenFileAtHead"
     }
   }
 ]
