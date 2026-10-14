@@ -8,12 +8,22 @@ status_indicators = "symbols"
 delivery = "herdr"
 
 [theme]
-# Fallback when the host terminal never reports a light/dark scheme.
-name = "rose-pine"
-# Follow Ghostty's appearance: rose-pine in dark, rose-pine-dawn in light.
-auto_switch = true
+name = "terminal"
+auto_switch = false
 dark_name = "rose-pine"
 light_name = "rose-pine-dawn"
+
+[theme.custom]
+accent = "lightred"
+green = "lightgreen"
+yellow = "lightyellow"
+red = "lightred"
+blue = "lightblue"
+teal = "lightcyan"
+peach = "lightyellow"
+panel_bg = "#181818"
+surface0 = "#181818"
+active_row_bg = "#181818"
 
 [keys]
 last_pane = "prefix+backtick"
