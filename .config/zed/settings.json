@@ -85,6 +85,9 @@
   "project_panel": {
     "dock": "left"
   },
+  "file_finder": {
+    "include_ignored": "all"
+  },
   "preview_tabs": {
     "enable_preview_multibuffer_from_code_navigation": true
   },
