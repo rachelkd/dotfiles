@@ -1,0 +1,7 @@
+#!/bin/sh
+# Usage: ruff-fix-format <filename>  (source on stdin, formatted source on stdout)
+# conform's ruff_fix + ruff_format: `ruff check --fix` (import sort, unused
+# imports, other safe fixes), then `ruff format`. Same order as `make lint` in api/.
+bin=$(dirname "$0")
+fixed=$("$bin/project-bin" ruff check --fix --force-exclude --exit-zero --no-cache --quiet --stdin-filename "$1" -) || exit 1
+printf '%s\n' "$fixed" | "$bin/project-bin" ruff format --quiet --stdin-filename "$1" -

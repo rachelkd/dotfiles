@@ -1,0 +1,21 @@
+#!/bin/sh
+# Usage: project-bin <exe> [args...]
+# Runs <exe> from the nearest .venv/bin or node_modules/.bin above the current
+# directory, else $PATH, else Neovim's Mason bin. Helix starts language servers in
+# the LSP root and formatters in the file's directory, so each project (each
+# ~/code/kenv/N/core env) uses its own pinned ruff/ty/prettier.
+exe=$1
+shift
+dir=$(pwd)
+while :; do
+  if [ -x "$dir/.venv/bin/$exe" ]; then
+    # ty locates third-party packages via VIRTUAL_ENV.
+    export VIRTUAL_ENV="$dir/.venv" PATH="$dir/.venv/bin:$PATH"
+    exec "$dir/.venv/bin/$exe" "$@"
+  fi
+  [ -x "$dir/node_modules/.bin/$exe" ] && exec "$dir/node_modules/.bin/$exe" "$@"
+  [ "$dir" = / ] && break
+  dir=$(dirname "$dir")
+done
+command -v "$exe" >/dev/null && exec "$exe" "$@"
+exec "$HOME/.local/share/nvim/mason/bin/$exe" "$@"

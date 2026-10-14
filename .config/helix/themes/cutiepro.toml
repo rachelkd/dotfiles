@@ -1,0 +1,112 @@
+# The cutiepro Zed port (github.com/wakaranakattari/cutiepro-zed, themes/cutiepro.json) with its
+# exact colors. The editor, gutter and popups have no background, so Ghostty's translucent #181818
+# shows through; menus and the status and buffer lines stay #181818. Zed colors with alpha are
+# pre-blended onto #181818, since Helix has no transparency.
+
+"attribute" = "amber"
+"comment" = "muted"
+"comment.block.documentation" = { fg = "muted", modifiers = ["italic"] }
+"comment.line.documentation" = { fg = "muted", modifiers = ["italic"] }
+"constant" = "accent"
+"constant.numeric" = "steel"
+"constant.character.escape" = "steel"
+"constructor" = "coral"
+"function" = "lilac"
+"function.builtin" = { fg = "lilac", modifiers = ["italic"] }
+"function.macro" = "mint"
+"keyword" = "red"
+"keyword.directive" = "lilac"
+"label" = "mint"
+"namespace" = "coral"
+"operator" = "cream"
+"punctuation" = "cream"
+"special" = "accent" # fuzzy match highlight
+"string" = "green"
+"string.special" = "steel"
+"string.special.url" = "link"
+"tag" = "red"
+"type" = "coral"
+"type.builtin" = "teal"
+"type.parameter" = "teal"
+"type.enum.variant" = "accent"
+"variable" = "accent"
+
+"markup.heading" = { fg = "accent", modifiers = ["bold"] }
+"markup.list" = "accent"
+"markup.bold" = { fg = "strong", modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = "link"
+"markup.link.text" = "link"
+"markup.raw" = "green"
+
+"diff.plus" = "green"
+"diff.delta" = "modified"
+"diff.minus" = "red"
+
+"ui.background" = { fg = "text" }
+"ui.text" = "text"
+"ui.text.focus" = { bg = "selection" }
+"ui.text.inactive" = "muted"
+"ui.linenr" = "muted"
+"ui.linenr.selected" = "accent"
+"ui.cursorline.primary" = { bg = "active_line" }
+"ui.cursor" = { fg = "bg", bg = "lilac" }
+"ui.cursor.primary" = { fg = "bg", bg = "accent" }
+"ui.cursor.match" = { bg = "bracket" }
+"ui.selection" = { bg = "selection" }
+"ui.highlight" = { bg = "reference" }
+"ui.statusline" = { fg = "text", bg = "bg" }
+"ui.statusline.inactive" = { fg = "muted", bg = "bg" }
+"ui.bufferline" = { fg = "muted", bg = "bg" }
+"ui.bufferline.active" = { fg = "text", bg = "border" }
+"ui.bufferline.background" = { bg = "bg" }
+"ui.popup" = { fg = "text" }
+"ui.help" = { fg = "text" }
+"ui.menu" = { fg = "text", bg = "bg" }
+"ui.menu.selected" = { bg = "selection" }
+"ui.menu.scroll" = { fg = "thumb", bg = "bg" }
+"ui.window" = "border"
+"ui.virtual" = "muted"
+"ui.virtual.indent-guide" = "border"
+"ui.virtual.ruler" = { bg = "border" }
+"ui.virtual.inlay-hint" = "muted"
+"ui.virtual.jump-label" = { fg = "red", modifiers = ["bold"] } # Zed has no jump labels
+
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "yellow", style = "curl" } }
+"diagnostic.info" = { underline = { color = "blue", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "muted", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+error = "red"
+warning = "yellow"
+info = "blue"
+hint = "muted"
+
+# Named by role in the Zed port; values are its exact colors.
+[palette]
+bg = "#181818"          # Ghostty's background (the port's editor is #181716)
+active_line = "#242628" # editor.active_line.background
+selection = "#383838"   # players[0].selection, element.selected
+border = "#2e2a27"      # border, indent guides, active tab
+text = "#d5d0c9"
+muted = "#88847f"       # comments, line numbers, hints
+accent = "#e5a1a3"      # variables, constants, cursor, titles
+strong = "#d7c3ba"      # emphasis.strong
+red = "#f56e7f"         # keywords, tags, errors
+green = "#bec975"       # strings
+coral = "#f58669"       # types, constructors, namespaces
+teal = "#5dccc3"        # built-in types
+lilac = "#caa2ca"       # functions, preproc
+mint = "#97ca95"        # macros, labels
+steel = "#a5b6ce"       # numbers, escapes
+cream = "#e8d6a7"       # punctuation, operators
+amber = "#f4b86a"       # attributes
+link = "#ef7dc0"
+yellow = "#f3b061"      # warnings
+blue = "#80c5de"        # info
+bracket = "#282828"     # #38383880 bracket highlight
+thumb = "#7f5d5e"       # #e5a1a380 scrollbar thumb
+modified = "#bc8687"    # #E5A1A3CC version_control.modified
+reference = "#2d2626"   # #e5a1a31a document highlight

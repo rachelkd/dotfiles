@@ -1,0 +1,60 @@
+# Dark: themes/cutiepro, the cutiepro Zed port's exact colors on #181818. Light: term16_light,
+# which uses the terminal's palette (Ghostty's Rose Pine Dawn).
+theme = { dark = "cutiepro", light = "term16_light" }
+
+[editor]
+line-number = "relative"
+cursorline = true
+bufferline = "multiple"
+color-modes = true
+popup-border = "all"
+completion-trigger-len = 1
+completion-timeout = 5
+end-of-line-diagnostics = "hint"
+default-yank-register = "+"  # clipboard=unnamedplus
+
+[editor.cursor-shape]
+insert = "bar"
+
+[editor.indent-guides]
+render = true
+character = "│"
+
+[editor.inline-diagnostics]
+cursor-line = "warning"
+
+[editor.lsp]
+display-inlay-hints = true
+
+[editor.file-picker]
+hidden = false  # show dotfile
+
+# Smooth scrolling (smooth-scroll.hx plugin, loaded in init.scm)
+[keys.normal]
+C-d = ":half-page-down-smooth"
+C-u = ":half-page-up-smooth"
+pageup = ":page-up-smooth"
+pagedown = ":page-down-smooth"
+
+# Explorer with icons: yazi (Helix has no icon support). Enter opens, q cancels.
+# space e opens on the current file, space E at the working directory.
+# < /dev/tty: Helix gives yazi an empty stdin, which yazi passes to fzf (z), so fzf finds nothing.
+[keys.normal.space]
+e = [
+  ':sh rm -f /tmp/helix-yazi-chooser',
+  ':insert-output yazi "%{buffer_name}" --chooser-file=/tmp/helix-yazi-chooser < /dev/tty',
+  ':sh printf "\x1b[?1049h\x1b[?2004h" > /dev/tty',
+  ':open %sh{cat /tmp/helix-yazi-chooser}',
+  ':redraw',
+  ':set mouse false',
+  ':set mouse true',
+]
+E = [
+  ':sh rm -f /tmp/helix-yazi-chooser',
+  ':insert-output yazi --chooser-file=/tmp/helix-yazi-chooser < /dev/tty',
+  ':sh printf "\x1b[?1049h\x1b[?2004h" > /dev/tty',
+  ':open %sh{cat /tmp/helix-yazi-chooser}',
+  ':redraw',
+  ':set mouse false',
+  ':set mouse true',
+]

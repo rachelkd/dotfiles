@@ -1,0 +1,33 @@
+# Tools run via bin/project-bin: the nearest .venv/bin or node_modules/.bin above the
+# LSP root (so each ~/code/kenv/N/core env uses its own api/.venv and web/node_modules),
+# falling back to Neovim's Mason bin.
+
+[language-server]
+ty = { command = "/Users/rachel/.config/helix/bin/project-bin", args = ["ty", "server"] }
+ruff = { command = "/Users/rachel/.config/helix/bin/project-bin", args = ["ruff", "server"] }
+vtsls = { command = "/Users/rachel/.config/helix/bin/project-bin", args = ["vtsls", "--stdio"], config.vtsls.autoUseWorkspaceTsdk = true }
+
+[language-server.eslint]
+command = "/Users/rachel/.config/helix/bin/project-bin"
+args = ["vscode-eslint-language-server", "--stdio"]
+config = { validate = "on", run = "onType", nodePath = "", rulesCustomizations = [], experimental = {}, problems = {}, codeAction = { disableRuleComment = { enable = true, location = "separateLine" }, showDocumentation = { enable = true } }, workingDirectory = { mode = "auto" } }
+
+# Formatters run in the file's directory, hence the basename.
+
+[[language]]
+name = "python"
+language-servers = ["ty", "ruff"]
+auto-format = true
+formatter = { command = "/Users/rachel/.config/helix/bin/ruff-fix-format", args = ['%sh{basename "%{buffer_name}"}'] }
+
+[[language]]
+name = "typescript"
+language-servers = ["vtsls", "eslint"]
+auto-format = true
+formatter = { command = "/Users/rachel/.config/helix/bin/project-bin", args = ["prettier", "--stdin-filepath", '%sh{basename "%{buffer_name}"}'] }
+
+[[language]]
+name = "tsx"
+language-servers = ["vtsls", "eslint"]
+auto-format = true
+formatter = { command = "/Users/rachel/.config/helix/bin/project-bin", args = ["prettier", "--stdin-filepath", '%sh{basename "%{buffer_name}"}'] }
