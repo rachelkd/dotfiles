@@ -35,7 +35,6 @@ local zed = {
   ["pane_group.border"] = "#2e2a27",
   ["status_bar.background"] = "#181818",
   ["tab_bar.background"] = "#181818",
-  ["tab.active_background"] = "#2e2a27",
   ["text"] = "#d5d0c9",
   ["text.muted"] = "#88847f",
   ["text.accent"] = "#e5a1a3",
@@ -98,6 +97,7 @@ local syntax = {
 local search = { bg = zed["search.match_background"] }
 local active_search = { bg = zed["search.active_match_background"] }
 local invisible = { fg = zed["editor.invisible"] }
+local separator = { fg = zed["border"] }
 local float = zed["elevated_surface.background"]
 
 local groups = {
@@ -127,7 +127,7 @@ local groups = {
   StatusLine = { fg = zed["text"], bg = zed["status_bar.background"] },
   StatusLineNC = { fg = zed["text.muted"], bg = zed["status_bar.background"] },
   TabLineFill = { bg = zed["tab_bar.background"] },
-  TabLineSel = { fg = zed["text"], bg = zed["tab.active_background"] },
+  TabLineSel = { fg = zed["editor.background"], bg = zed["error"] },
   WinBar = { fg = zed["text"] },
   WinBarNC = { fg = zed["text.muted"] },
   Pmenu = { fg = zed["text"], bg = float },
@@ -172,10 +172,15 @@ local groups = {
   DiffDelete = { bg = blend("#f56e7f26") },
   DiffText = { bg = blend("#e5a1a340") },
 
-  -- Plugins (LazyVim's snacks indent guides and blink.cmp ghost text)
+  -- Plugins (LazyVim's snacks indent guides, blink.cmp ghost text and bufferline separators)
   SnacksIndent = { fg = zed["editor.indent_guide"] },
   SnacksIndentScope = { fg = zed["editor.indent_guide_active"] },
   BlinkCmpGhostText = syntax["predictive"],
+  BufferLineSeparator = separator,
+  BufferLineSeparatorVisible = separator,
+  BufferLineSeparatorSelected = separator,
+  BufferLineTabSeparator = separator,
+  BufferLineTabSeparatorSelected = separator,
 
   -- Legacy syntax groups, for filetypes without tree-sitter and plugins that link to them
   Comment = syntax["comment"],
