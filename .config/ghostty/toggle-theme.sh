@@ -3,12 +3,9 @@
 #
 # Everything that matters already follows the system appearance, so this one
 # flip retints all of them at once:
-#   - Ghostty  via `theme = light:Rose Pine Dawn,dark:Catppuccin Mocha`
+#   - Ghostty  via `theme = light:Rose Pine Dawn,dark:cutiepro`
 #   - Herdr    via `[theme] auto_switch` (rose-pine / rose-pine-dawn)
 #   - Neovim   via the OptionSet background autocmd
-#
-# The previous version of this script flipped Ghostty's `window-theme` key,
-# which only controls window chrome — it never changed any palette.
 
 set -euo pipefail
 

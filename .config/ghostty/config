@@ -1,5 +1,8 @@
-theme = light:Rose Pine Dawn,dark:Catppuccin Mocha
-# unfocused-split-opacity = 1
+theme = light:Rose Pine Dawn,dark:cutiepro
+# theme = light:Rose Pine Dawn,dark:Catppuccin Mocha
+# Bold text in the 8 basic colors uses their bright versions, like iTerm2; cutiepro's pastels
+# are its bright colors.
+bold-color = bright
 
 font-family = "Iosevka"
 font-feature = NWID, ss14
