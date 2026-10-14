@@ -24,6 +24,22 @@
     "light": "Rosé Pine Dawn",
     "dark": "cutiepro"
   },
+  "theme_overrides": {
+    "cutiepro": {
+      "background.appearance": "blurred",
+      "background": "#181818d9",
+      "editor.background": "#00000000",
+      "editor.gutter.background": "#00000000",
+      "panel.background": "#00000000",
+      "title_bar.background": "#181818d9",
+      "title_bar.inactive_background": "#181818d9",
+      "toolbar.background": "#00000000",
+      "tab_bar.background": "#00000000",
+      "tab.inactive_background": "#00000000",
+      "status_bar.background": "#00000000",
+      "terminal.background": "#00000000"
+    }
+  },
   "icon_theme": {
     "mode": "dark",
     "light": "Catppuccin Latte",
