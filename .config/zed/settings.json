@@ -31,10 +31,14 @@
   },
   "ui_font_size": 16,
   "buffer_font_family": "Iosevka",
-  "buffer_font_fallbacks": ["JetBrainsMono Nerd Font"],
+  "buffer_font_fallbacks": [
+    "JetBrainsMono Nerd Font"
+  ],
   "buffer_font_size": 13.0,
-  "buffer_font_features": { "NWID": true, "ss04": true },
-
+  "buffer_font_features": {
+    "NWID": true,
+    "ss04": true
+  },
   // Input
   "base_keymap": "JetBrains",
   "helix_mode": true,
@@ -43,7 +47,6 @@
     "enabled": true,
     "delay_ms": 150
   },
-
   // Editor
   "relative_line_numbers": "disabled",
   "gutter": {
@@ -58,7 +61,6 @@
   "semantic_tokens": "combined",
   "diff_view_style": "split",
   "format_on_save": "modifications",
-
   // Workspace
   "cli_default_open_behavior": "new_window",
   "session": {
@@ -70,19 +72,24 @@
   "preview_tabs": {
     "enable_preview_multibuffer_from_code_navigation": true
   },
-
   // Terminal
   "terminal": {
-    "font_features": { "NWID": true, "ss14": true }
+    "font_features": {
+      "NWID": true,
+      "ss14": true
+    }
   },
-
   // Languages
   "languages": {
     "Python": {
-      "language_servers": ["ty", "ruff", "!basedpyright", "todo-highlight-lsp"]
+      "language_servers": [
+        "ty",
+        "ruff",
+        "!basedpyright",
+        "todo-highlight-lsp"
+      ]
     }
   },
-
   // AI agents
   "agent_servers": {
     "claude-acp": {
@@ -105,7 +112,6 @@
       }
     }
   },
-
   // Privacy
   "telemetry": {
     "diagnostics": false,
