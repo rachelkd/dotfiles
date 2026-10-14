@@ -3,8 +3,7 @@
 export PLUGIN_DIR="$CONFIG_DIR/plugins"
 export ITEM_DIR="$CONFIG_DIR/items"
 
-# Re-read Ghostty's palette on every (re)load; plugins then use colors.sh's cached copy.
-GHOSTTY_PALETTE_REFRESH=1 source "$CONFIG_DIR/colors.sh"
+source "$CONFIG_DIR/colors.sh"
 
 # Derive the app icon map from the installed sketchybar-app-font before anything
 # sources it; a no-op unless the font's release changed. Homebrew's python by path:
@@ -55,14 +54,6 @@ source "$ITEM_DIR/volume.sh"
 source "$ITEM_DIR/battery.sh"
 source "$ITEM_DIR/cpu.sh"
 # source "$ITEM_DIR/caffeinate.sh"
-
-# Light/dark switch: reload, so colors.sh re-reads Ghostty's palette for the new appearance.
-# Only on the real event: the --update below runs every script once at startup.
-sketchybar --add event appearance_change AppleInterfaceThemeChangedNotification \
-           --add item appearance left \
-           --set appearance drawing=off updates=on \
-                 script='[ "$SENDER" = appearance_change ] && sketchybar --reload' \
-           --subscribe appearance appearance_change
 
 sketchybar --hotload true
 ##### Force all scripts to run the first time (never do this in a script) #####
