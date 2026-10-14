@@ -10,7 +10,8 @@ return {
         if vim.o.background == "light" then
           require("rose-pine").colorscheme()
         else
-          require("catppuccin").load()
+          vim.cmd.colorscheme("cutiepro")
+          -- require("catppuccin").load()
         end
       end,
     },

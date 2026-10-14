@@ -11,7 +11,8 @@
 vim.api.nvim_create_autocmd("OptionSet", {
   pattern = "background",
   callback = function()
-    local target_scheme = vim.o.background == "light" and "rose-pine" or "catppuccin"
+    local target_scheme = vim.o.background == "light" and "rose-pine" or "cutiepro"
+    -- local target_scheme = vim.o.background == "light" and "rose-pine" or "catppuccin"
     local ok = pcall(vim.cmd.colorscheme, target_scheme)
     if not ok then
       vim.notify("Colorscheme " .. target_scheme .. " not found, keeping current theme", vim.log.levels.WARN)
