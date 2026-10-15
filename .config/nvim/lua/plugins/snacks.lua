@@ -1,3 +1,6 @@
+local indent_colors =
+  { "SnacksIndent1", "SnacksIndent2", "SnacksIndent3", "SnacksIndent4", "SnacksIndent5", "SnacksIndent6" }
+
 return {
   {
     "folke/snacks.nvim",
@@ -6,6 +9,19 @@ return {
     ---@type snacks.Config
     opts = {
       image = {},
+      indent = {
+        indent = { hl = indent_colors },
+        scope = {
+          hl = {
+            "SnacksIndentScope1",
+            "SnacksIndentScope2",
+            "SnacksIndentScope3",
+            "SnacksIndentScope4",
+            "SnacksIndentScope5",
+            "SnacksIndentScope6",
+          },
+        },
+      },
       lazygit = {
         -- Focused borders default to MatchParen's fg, which cutiepro leaves unset.
         theme = {
