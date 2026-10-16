@@ -11,5 +11,5 @@ status_bracket=(
     background.border_color="$ACCENT_COLOR"
 )
 
-sketchybar --add bracket status volume battery cpu \
+sketchybar --add bracket status volume battery memory cpu \
     --set status "${status_bracket[@]}"
