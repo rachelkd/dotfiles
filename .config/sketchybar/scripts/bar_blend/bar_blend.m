@@ -26,25 +26,26 @@
 @end
 
 // The bar on one display.
-@interface Display : NSObject <SCStreamOutput, SCStreamDelegate> {
+@interface Display : NSObject {
 @public
     CGDirectDisplayID display_id;
     CGRect bounds;  // global coordinates in points
     CGFloat scale;  // pixels per point
     size_t width;   // in pixels, one column per pixel
     CGColorSpaceRef space; // the display color space; draw in it so colors do not shift
-    uint32_t* seen;   // last row from the stream, BGRA
     uint32_t* row;    // last screenshot of the row, BGRA
     bool capturing;   // a screenshot is in progress
-    bool pending;     // the row changed during the screenshot
+    bool changing;    // the last screenshot found a change
+    bool moved;       // the windows just below the bar changed
     uint32_t* colors; // bar columns, BGRA, 0 is transparent
     bool covered;     // a window fills the display (full screen, slideshow)
+    bool dark;        // the bar is dark behind the left items
 }
 @property NSWindow* window;
-@property CALayer* band; // the bar: a 1-pixel-high image, stretched
-@property SCContentFilter* filter;
+@property CALayer* band;    // the bar: a 1-pixel-high image, stretched
+@property NSArray* windows; // the windows just below the bar at the last check
+@property SCContentFilter* filter; // made again when those windows change
 @property SCStreamConfiguration* config;
-@property SCStream* stream;
 @end
 
 // macOS moves windows below the menu bar and notch. This window must cover the bar.
@@ -62,9 +63,10 @@ static int g_bar_height;
 static NSMutableArray<Display*>* g_displays;
 static NSMutableDictionary<NSNumber*, Corner*>* g_corners; // by window number
 static dispatch_source_t g_sketchybar;
-static bool g_covered; // a window fills a display
+static dispatch_source_t g_timer;
+static bool g_covered;     // a window fills a display
 
-// These windows stay just below the bar so its items show. The bar is above normal
+// These windows stay one level below the bar so its items show. The bar is above normal
 // windows, so it covers their shadows. When a window fills a display, the bar goes
 // below normal windows so that window covers it. sketchybar misses slideshows.
 static NSWindowLevel window_level(void) {
@@ -80,18 +82,24 @@ static void update_level(void) {
     for (Display* d in g_displays) d.window.level = window_level();
 }
 
+// The workspace scripts draw the unboxed items in a light color on the displays in
+// this file.
+static void update_dark(void) {
+    NSMutableString* ids = [NSMutableString new];
+    for (Display* d in g_displays)
+        if (d->dark) [ids appendFormat:@"%u ", d->display_id];
+    [ids writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"sketchybar_dark_displays"]
+          atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    sketchybar("--trigger bar_dark_changed");
+}
+
 static void restart(void) {
-    // execv keeps the blocked signals of this thread, and capture callbacks block all of
-    // them. Without this, the new process ignores SIGTERM from killall.
+    // execv keeps the blocked signals of this thread. Callback threads block all of
+    // them, and then the new process ignores SIGTERM from killall.
     sigset_t none;
     sigemptyset(&none);
     pthread_sigmask(SIG_SETMASK, &none, NULL);
     execv(g_argv[0], g_argv);
-}
-
-static void fail(NSError* error) {
-    fprintf(stderr, "bar_blend: %s\n", error.localizedDescription.UTF8String);
-    exit(1);
 }
 
 static void compute(Display* d);
@@ -174,12 +182,8 @@ static size_t column(Display* d, double x) {
 // Sets the bar colors from the last screenshot and draws the bar.
 static void compute(Display* d) {
     double bar_bottom = CGRectGetMinY(d->bounds) + g_bar_height;
-    double sample_y = bar_bottom + SAMPLE_DEPTH;
-
-    // Menus, popovers and the screenshot selection tint change the sampled pixels.
-    // Columns below them keep their last color.
-    bool overlaid[d->width];
-    memset(overlaid, 0, sizeof(overlaid));
+    bool items[d->width]; // below the bar items on the left
+    memset(items, 0, sizeof(items));
     NSArray* list = CFBridgingRelease(CGWindowListCopyWindowInfo(
         kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements, kCGNullWindowID));
     NSMutableArray<NSNumber*>* numbers = [NSMutableArray new];
@@ -190,9 +194,9 @@ static void compute(Display* d) {
         int layer = [window[(id)kCGWindowLayer] intValue];
         CGRect rect;
         CGRectMakeWithDictionaryRepresentation((__bridge CFDictionaryRef)window[(id)kCGWindowBounds], &rect);
-        if (layer > 0 && [window[(id)kCGWindowOwnerPID] intValue] != getpid()
-            && CGRectGetMinY(rect) <= sample_y && CGRectGetMaxY(rect) > sample_y)
-            for (size_t x = column(d, CGRectGetMinX(rect)); x < column(d, CGRectGetMaxX(rect)); x++) overlaid[x] = true;
+        if ([window[(id)kCGWindowOwnerName] isEqualToString:@"sketchybar"] && CGRectGetMinY(rect) == CGRectGetMinY(d->bounds)
+            && CGRectGetHeight(rect) == g_bar_height && CGRectGetMaxX(rect) <= CGRectGetMidX(d->bounds))
+            for (size_t x = column(d, CGRectGetMinX(rect)); x < column(d, CGRectGetMaxX(rect)); x++) items[x] = true;
         if (layer != 0) continue;
         d->covered |= CGRectContainsRect(rect, d->bounds);
         bounds[count++] = rect;
@@ -242,7 +246,7 @@ static void compute(Display* d) {
     // Clean columns use their own pixel. The other columns are below a corner. They copy
     // the next pixel of their owner, from the left or else from the right.
     uint32_t* colors = d->colors;
-    for (size_t x = 0; x < d->width; x++) colors[x] = !clean[x] ? 0 : overlaid[x] ? colors[x] : d->row[x];
+    for (size_t x = 0; x < d->width; x++) colors[x] = clean[x] ? d->row[x] : 0;
     for (size_t x = 1; x < d->width; x++)
         if (!clean[x] && owner[x] >= 0 && owner[x] == owner[x - 1]) colors[x] = colors[x - 1];
     for (size_t x = d->width - 1; x-- > 0;)
@@ -313,16 +317,29 @@ static void compute(Display* d) {
     d.window.contentView.layer.sublayers = [layers arrayByAddingObjectsFromArray:fills];
     [CATransaction commit];
     CGImageRelease(image);
+
+    // The bar is dark if its mean luma behind the left items is below mid-gray. Below a
+    // transparent column, the row shows what the bar shows.
+    double luma = 0;
+    size_t n = 0;
+    for (size_t x = 0; x < d->width; x++) {
+        if (!items[x]) continue;
+        uint32_t c = colors[x] ? colors[x] : d->row[x];
+        luma += 0.2126 * (c >> 16 & 0xff) + 0.7152 * (c >> 8 & 0xff) + 0.0722 * (c & 0xff);
+        n++;
+    }
+    if (n && (luma < 128 * n) != d->dark) {
+        d->dark = !d->dark;
+        update_dark();
+    }
 }
 
-// Stream colors are slightly shifted. A stream change only starts a screenshot of the
-// same rows, which has exact colors.
-static void screenshot(Display* d) {
-    if (d->capturing) {
-        d->pending = true;
-        return;
-    }
-    d->capturing = true;
+// A capture stream counts as screen sharing, which hides notifications. So take a
+// screenshot when the windows just below the bar change, again until the row stops
+// changing, and every 2 seconds for other color changes in windows. The screenshot
+// leaves out the windows of this helper and the windows above normal windows: menus,
+// banners and the screenshot selection tint.
+static void capture(Display* d) {
     [SCScreenshotManager captureSampleBufferWithFilter:d.filter configuration:d.config
                                      completionHandler:^(CMSampleBufferRef sample, NSError* error) {
         NSData* middle = nil;
@@ -335,53 +352,82 @@ static void screenshot(Display* d) {
         }
         dispatch_async(dispatch_get_main_queue(), ^{
             d->capturing = false;
-            if (middle && memcmp(middle.bytes, d->row, d->width * 4) != 0) {
-                memcpy(d->row, middle.bytes, d->width * 4);
-                compute(d);
-            }
-            if (d->pending) {
-                d->pending = false;
-                screenshot(d);
-            }
+            bool changed = middle && memcmp(middle.bytes, d->row, d->width * 4) != 0;
+            if (changed) memcpy(d->row, middle.bytes, d->width * 4);
+            d->changing = changed || d->moved;
+            d->moved = false;
+            if (d->changing) compute(d);
         });
     }];
 }
 
-@implementation Display
-- (void)stream:(SCStream*)stream didOutputSampleBuffer:(CMSampleBufferRef)sample ofType:(SCStreamOutputType)type {
-    CVPixelBufferRef buffer = CMSampleBufferGetImageBuffer(sample);
-    if (!buffer || CVPixelBufferGetWidth(buffer) < width || CVPixelBufferGetHeight(buffer) < 3) return;
-    CVPixelBufferLockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly);
-    const uint8_t* base = CVPixelBufferGetBaseAddress(buffer);
-    const uint32_t* middle = (const uint32_t*)(base + CVPixelBufferGetBytesPerRow(buffer));
-    if (memcmp(middle, seen, width * 4) != 0) {
-        memcpy(seen, middle, width * 4);
-        screenshot(self);
+static void screenshot(Display* d) {
+    if (d->capturing) return;
+    d->capturing = true;
+    if (d.filter) {
+        capture(d);
+        return;
     }
-    CVPixelBufferUnlockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly);
+    [SCShareableContent getShareableContentExcludingDesktopWindows:YES onScreenWindowsOnly:YES
+                                                 completionHandler:^(SCShareableContent* content, NSError* error) {
+        if (error) {
+            fprintf(stderr, "bar_blend: %s\n", error.localizedDescription.UTF8String);
+            exit(1);
+        }
+        SCDisplay* display = nil;
+        for (SCDisplay* s in content.displays)
+            if (s.displayID == d->display_id) display = s;
+        NSMutableArray* skip = [NSMutableArray new];
+        for (SCWindow* w in content.windows)
+            if (w.windowLayer > 0 || w.owningApplication.processID == getpid()) [skip addObject:w];
+        d.filter = [[SCContentFilter alloc] initWithDisplay:display excludingWindows:skip];
+        capture(d);
+    }];
 }
 
-- (void)stream:(SCStream*)stream didStopWithError:(NSError*)error {
-    fprintf(stderr, "bar_blend: capture stopped: %s\n", error.localizedDescription.UTF8String);
-    sleep(1);
-    restart();
+// Checks the windows just below the bar on each display: their place, order and
+// title. A browser title changes with the tab, and so does its color. Windows inside
+// the bar, like the recording indicator that each screenshot shows, do not count.
+static void tick(void) {
+    static int ticks;
+    bool periodic = ++ticks % 20 == 0;
+    NSArray* list = CFBridgingRelease(CGWindowListCopyWindowInfo(
+        kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements, kCGNullWindowID));
+    for (Display* d in g_displays) {
+        CGRect below = CGRectMake(CGRectGetMinX(d->bounds), CGRectGetMinY(d->bounds) + g_bar_height,
+                                  CGRectGetWidth(d->bounds), CORNER_MAX);
+        NSMutableArray* windows = [NSMutableArray new];
+        for (NSDictionary* w in list) {
+            CGRect rect;
+            CGRectMakeWithDictionaryRepresentation((__bridge CFDictionaryRef)w[(id)kCGWindowBounds], &rect);
+            if (CGRectIntersectsRect(rect, below) && [w[(id)kCGWindowOwnerPID] intValue] != getpid())
+                [windows addObject:@[w[(id)kCGWindowNumber], w[(id)kCGWindowBounds], w[(id)kCGWindowName] ?: @""]];
+        }
+        if (![windows isEqualToArray:d.windows]) {
+            d.windows = windows;
+            d.filter = nil;
+            d->moved = true;
+        }
+        if (d->moved || periodic || d->changing) screenshot(d);
+    }
 }
+
+@implementation Display
 @end
 
 static void display_changed(CGDirectDisplayID display, CGDisplayChangeSummaryFlags flags, void* info) {
     if (!(flags & kCGDisplayBeginConfigurationFlag)) restart();
 }
 
-static Display* add_display(SCDisplay* screen) {
+static Display* add_display(CGDirectDisplayID display_id) {
     Display* d = [Display new];
-    d->display_id = screen.displayID;
+    d->display_id = display_id;
     d->bounds = CGDisplayBounds(d->display_id);
     CGDisplayModeRef mode = CGDisplayCopyDisplayMode(d->display_id);
     d->scale = (CGFloat)CGDisplayModeGetPixelWidth(mode) / CGDisplayModeGetWidth(mode);
     CGDisplayModeRelease(mode);
     d->width = CGRectGetWidth(d->bounds) * d->scale;
     d->space = CGDisplayCopyColorSpace(d->display_id);
-    d->seen = calloc(d->width, 4);
     d->row = calloc(d->width, 4);
     d->colors = calloc(d->width, 4);
 
@@ -419,16 +465,6 @@ static Display* add_display(SCDisplay* screen) {
     d.config.height = 3;
     d.config.pixelFormat = kCVPixelFormatType_32BGRA;
     d.config.showsCursor = NO;
-    d.config.minimumFrameInterval = CMTimeMake(1, 20);
-
-    d.filter = [[SCContentFilter alloc] initWithDisplay:screen excludingWindows:@[]];
-    d.stream = [[SCStream alloc] initWithFilter:d.filter configuration:d.config delegate:d];
-    NSError* error = nil;
-    if (![d.stream addStreamOutput:d type:SCStreamOutputTypeScreen sampleHandlerQueue:dispatch_get_main_queue() error:&error])
-        fail(error);
-    [d.stream startCaptureWithCompletionHandler:^(NSError* error) {
-        if (error) fail(error);
-    }];
     return d;
 }
 
@@ -459,12 +495,18 @@ int main(int argc, char** argv) {
     // Restart when the displays change.
     CGDisplayRegisterReconfigurationCallback(display_changed, NULL);
 
-    [SCShareableContent getShareableContentWithCompletionHandler:^(SCShareableContent* content, NSError* error) {
-        if (error) fail(error);
-        dispatch_async(dispatch_get_main_queue(), ^{
-            for (SCDisplay* screen in content.displays) [g_displays addObject:add_display(screen)];
-        });
-    }];
+    uint32_t count;
+    CGDirectDisplayID ids[16];
+    CGGetActiveDisplayList(16, ids, &count);
+    for (uint32_t i = 0; i < count; i++) [g_displays addObject:add_display(ids[i])];
+    update_dark();
+
+    g_timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, dispatch_get_main_queue());
+    dispatch_source_set_timer(g_timer, DISPATCH_TIME_NOW, NSEC_PER_SEC / 10, NSEC_PER_SEC / 100);
+    dispatch_source_set_event_handler(g_timer, ^{
+        tick();
+    });
+    dispatch_resume(g_timer);
 
     [NSApp run];
     return 0;

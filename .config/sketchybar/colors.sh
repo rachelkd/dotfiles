@@ -13,6 +13,7 @@ export ACCENT_COLOR_2=0xffe5a1a3 # bright red
 export ACCENT_COLOR_3=0xff80c5de # bright blue
 export ACCENT_COLOR_4=0xfff56e7f # red
 export TEXT_COLOR=0xffd5d0c9     # foreground
+export BRIGHT_WHITE=0xffd7c3ba   # bright white
 export MUTED=0xff88847f          # white
 export HIGHLIGHT_LOW=0xff2e2a27  # bright black
 export HIGHLIGHT_MED=0xff383838  # selection

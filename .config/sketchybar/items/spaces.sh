@@ -50,7 +50,7 @@ sketchybar --add item spaces_watcher left \
     --set spaces_watcher drawing=off \
     updates=on \
     script="$CONFIG_DIR/plugins/aerospace_all.sh" \
-    --subscribe spaces_watcher display_change display_added_or_removed system_woke
+    --subscribe spaces_watcher display_change display_added_or_removed system_woke bar_dark_changed
 
 sketchybar --add item space_separator left \
     --set space_separator icon="" \

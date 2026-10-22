@@ -48,7 +48,7 @@ rebuild() {
         NR == FNR { arr[$1] = $2; next }          # first file: ddid -> arrangement
         {                                          # second file: aerospace monitors
             ddid = ($2 >= 1 && $2 <= n) ? d[$2] : ""
-            print $1, (ddid in arr ? arr[ddid] : 1)
+            print $1, (ddid in arr ? arr[ddid] : 1), ddid
         }
     ' \
         <(sketchybar --query displays 2>/dev/null \
