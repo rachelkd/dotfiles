@@ -37,6 +37,16 @@ if [ ! -x "$CLOCK_DIR/clock" ] \
 fi
 "$CONFIG_DIR/scripts/clock/clock" &
 
+# Paints the bar in the colors of the windows below it.
+killall bar_blend 2>/dev/null
+BLEND_DIR="$CONFIG_DIR/scripts/bar_blend"
+if [ ! -x "$BLEND_DIR/bar_blend" ] \
+    || [ "$BLEND_DIR/bar_blend.m" -nt "$BLEND_DIR/bar_blend" ] \
+    || [ "$CONFIG_DIR/scripts/sketchybar.h" -nt "$BLEND_DIR/bar_blend" ]; then
+    (cd "$BLEND_DIR" && make)
+fi
+"$BLEND_DIR/bar_blend" &
+
 # AeroSpace event reader; --reload re-execs this file, so stop the previous one or
 # copies accumulate. Tracked by pid, never with `pkill -f`: a pattern broad enough to
 # match the reader also matches any unrelated shell with those words in its command
