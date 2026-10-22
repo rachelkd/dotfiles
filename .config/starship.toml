@@ -43,6 +43,19 @@ symbol = " "
 [git_commit]
 tag_symbol = '  '
 
+[custom.worktree]
+when = 'test "$(git rev-parse --git-dir)" != "$(git rev-parse --git-common-dir)"'
+command = '''
+worktree=$(git rev-parse --show-toplevel) || exit
+parent=${worktree%/*}
+printf '%s/%s' "${parent##*/}" "${worktree##*/}"
+'''
+require_repo = true
+shell = ['sh']
+symbol = '  '
+style = 'bold yellow'
+format = '[$symbol$output]($style) '
+
 [golang]
 symbol = " "
 
