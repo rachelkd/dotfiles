@@ -2,6 +2,8 @@
 -- Default options that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/options.lua
 -- Add any additional options here
 vim.opt_local.expandtab = true
+vim.opt.sessionoptions:append("localoptions")
+vim.opt.mousescroll = "ver:1,hor:2"
 
 -- OSC 52 is a terminal escape sequence that asks the terminal emulator to write to
 -- the local clipboard on our behalf. The terminal (e.g. Ghostty) must have
