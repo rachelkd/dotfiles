@@ -1,8 +1,11 @@
+# cutiepro is dark-only, so light mode keeps Rose Pine Dawn. themes/cutiepro is the cutiepro
+# repo's schemes/Ghostty file.
 theme = light:Rose Pine Dawn,dark:cutiepro
 # theme = light:Rose Pine Dawn,dark:Catppuccin Mocha
 # Bold text in the 8 basic colors uses their bright versions, like iTerm2; cutiepro's pastels
 # are its bright colors.
 bold-color = bright
+# unfocused-split-opacity = 1
 
 font-family = "Iosevka"
 font-feature = NWID, ss14
@@ -16,8 +19,9 @@ window-padding-y = 10
 window-colorspace = "display-p3"
 window-padding-balance = true
 window-save-state = always
+unfocused-split-opacity = 1.0
 
-macos-titlebar-style = transparent
+macos-titlebar-style = hidden
 
 background-opacity = 0.85
 background-blur-radius = 40
