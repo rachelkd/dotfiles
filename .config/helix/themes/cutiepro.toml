@@ -58,6 +58,9 @@
 "ui.highlight" = { bg = "reference" }
 "ui.statusline" = { fg = "text", bg = "bg" }
 "ui.statusline.inactive" = { fg = "muted", bg = "bg" }
+"ui.statusline.normal" = { fg = "bg", bg = "accent" }
+"ui.statusline.insert" = { fg = "bg", bg = "sage" }
+"ui.statusline.select" = { fg = "bg", bg = "blue" }
 "ui.bufferline" = { fg = "muted", bg = "bg" }
 "ui.bufferline.active" = { fg = "text", bg = "border" }
 "ui.bufferline.background" = { bg = "bg" }
@@ -106,6 +109,7 @@ amber = "#f4b86a"       # attributes
 link = "#ef7dc0"
 yellow = "#f3b061"      # warnings
 blue = "#80c5de"        # info
+sage = "#9ed7a8"
 bracket = "#282828"     # #38383880 bracket highlight
 thumb = "#7f5d5e"       # #e5a1a380 scrollbar thumb
 modified = "#bc8687"    # #E5A1A3CC version_control.modified
