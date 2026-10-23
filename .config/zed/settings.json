@@ -8,6 +8,8 @@
 // command palette (cmd-shift-p / ctrl-shift-p)
 {
   // Appearance
+  "show_wrap_guides": true,
+  "wrap_guides": [100],
   "indent_guides": {
     "background_coloring": "disabled",
     "coloring": "indent_aware"
@@ -20,7 +22,7 @@
     "use_smartcase_find": true
   },
   "theme": {
-    "mode": "dark",
+    "mode": "system",
     "light": "Rosé Pine Dawn",
     "dark": "cutiepro"
   },
@@ -37,9 +39,10 @@
       "toolbar.background": "#00000000",
       "tab_bar.background": "#00000000",
       "tab.inactive_background": "#00000000",
-      "status_bar.background": "#00000000",
+      "status_bar.background": "#181818d9",
       "terminal.background": "#00000000",
-      "element.selection_background": "#bec9753d"
+      "element.selection_background": "#bec9753d",
+      "editor.document_highlight.bracket_background": "#bec97540"
     }
   },
   "icon_theme": {
@@ -59,8 +62,8 @@
   },
   // Input
   "base_keymap": "JetBrains",
-  "helix_mode": true,
-  "vim_mode": false,
+  "helix_mode": false,
+  "vim_mode": true,
   "which_key": {
     "enabled": true,
     "delay_ms": 150
@@ -78,7 +81,7 @@
   },
   "semantic_tokens": "combined",
   "diff_view_style": "split",
-  "format_on_save": "modifications",
+  "format_on_save": "modifications_if_available",
   // Workspace
   "cli_default_open_behavior": "new_window",
   "close_panel_on_toggle": true,

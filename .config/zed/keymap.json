@@ -10,6 +10,7 @@
     "context": "Workspace",
     "bindings": {
       // "shift shift": "file_finder::Toggle"
+      "ctrl-/": "terminal_panel::Toggle"
     },
   },
   {
@@ -47,10 +48,137 @@
   {
     // Vim binds lone space to WrappingRight, so space chords time out after 1s and close which-key.
     // Space chords live here, not in a context-free block, or space lags in the terminal too.
-    "context": "(vim_mode == helix_normal || vim_mode == helix_select) && !menu",
+    "context": "(vim_mode == normal || vim_mode == visual || vim_mode == helix_normal || vim_mode == helix_select) && !menu",
     "bindings": {
       "space": null,
-      "space g j": "git::OpenFileAtHead"
+      "space space": "file_finder::Toggle",
+      "space ,": "tab_switcher::Toggle",
+      "space /": "pane::DeploySearch",
+      "space -": "pane::SplitDown",
+      "space |": "pane::SplitRight",
+      "space `": "pane::AlternateFile",
+      "space e": "project_panel::ToggleFocus",
+      "space b b": "pane::AlternateFile",
+      "space b d": "pane::CloseActiveItem",
+      "space b o": "pane::CloseOtherItems",
+      "space c a": "editor::ToggleCodeActions",
+      "space c d": "editor::Hover",
+      "space c f": "editor::Format",
+      "space c r": "editor::Rename",
+      "space c s": "outline_panel::ToggleFocus",
+      "space c y": "workspace::CopyRelativePath",
+      "space f b": "tab_switcher::Toggle",
+      "space f f": "file_finder::Toggle",
+      "space f shift-f": "file_finder::Toggle",
+      "space f n": "workspace::NewFile",
+      "space f p": "projects::OpenRecent",
+      "space f r": "file_finder::Toggle",
+      "space f t": "terminal_panel::Toggle",
+      "space g g": ["task::Spawn", { "task_name": "lazygit", "reveal_target": "center" }],
+      "space g b": "editor::BlameHover",
+      "space g shift-b": "editor::OpenPermalinkToLine",
+      "space g d": "git::Diff",
+      "space g shift-d": "git::BranchDiff",
+      "space g j": "git::OpenFileAtHead",
+      "space g l": "git_graph::Open",
+      "space g s": "git_panel::ToggleFocus",
+      "space g shift-y": "editor::CopyPermalinkToLine",
+      "space g h s": "git::ToggleStaged",
+      "space g h shift-s": "git::StageFile",
+      "space g h r": "git::Restore",
+      "space g h shift-r": "git::RestoreFile",
+      "space g h p": "editor::ToggleSelectedDiffHunks",
+      "space g h shift-b": "git::Blame",
+      "space s d": "diagnostics::Deploy",
+      "space s shift-d": "diagnostics::DeployCurrentFile",
+      "space s g": "pane::DeploySearch",
+      "space s k": "zed::OpenKeymap",
+      "space s r": ["pane::DeploySearch", { "replace_enabled": true }],
+      "space s s": "outline::Toggle",
+      "space s shift-s": "project_symbols::Toggle",
+      "space s shift-c": "command_palette::Toggle",
+      "space s w": "pane::DeploySearch",
+      "space u d": "editor::ToggleDiagnostics",
+      "space u g": "editor::ToggleIndentGuides",
+      "space u h": "editor::ToggleInlayHints",
+      "space u l": "editor::ToggleLineNumbers",
+      "space u shift-l": "editor::ToggleRelativeLineNumbers",
+      "space u shift-c": "theme_selector::Toggle",
+      "space u w": "editor::ToggleSoftWrap",
+      "space u z": "workspace::ToggleCenteredLayout",
+      "space w m": "workspace::ToggleZoom",
+      "space x x": "diagnostics::Deploy",
+      "space x shift-x": "diagnostics::DeployCurrentFile"
+    }
+  },
+  {
+    // LazyVim keys. These replace vim's H/L (screen top/bottom), ]] [[ (sections) and Zed's ]e [e (move line).
+    "context": "(vim_mode == normal || vim_mode == visual) && !menu",
+    "bindings": {
+      "g r": "editor::FindAllReferences",
+      "g shift-k": "editor::ShowSignatureHelp",
+      "shift-h": "pane::ActivatePreviousItem",
+      "shift-l": "pane::ActivateNextItem",
+      "] ]": "vim::GoToNextReference",
+      "[ [": "vim::GoToPreviousReference",
+      "] e": ["editor::GoToDiagnostic", { "severity": "error" }],
+      "[ e": ["editor::GoToPreviousDiagnostic", { "severity": "error" }],
+      "] w": ["editor::GoToDiagnostic", { "severity": "warning" }],
+      "[ w": ["editor::GoToPreviousDiagnostic", { "severity": "warning" }],
+      "] h": "editor::GoToHunk",
+      "[ h": "editor::GoToPreviousHunk"
+    }
+  },
+  {
+    // mini.surround's keys. Zed's g s (outline) is space s s.
+    "context": "vim_mode == normal && !menu",
+    "bindings": {
+      "g s": null,
+      "g s a": ["vim::PushAddSurrounds", {}],
+      "g s d": "vim::PushDeleteSurrounds",
+      "g s r": ["vim::PushChangeSurrounds", {}]
+    }
+  },
+  {
+    "context": "VimControl && !menu || !Editor && !Terminal",
+    "bindings": {
+      "ctrl-h": "workspace::ActivatePaneLeft",
+      "ctrl-j": "workspace::ActivatePaneDown",
+      "ctrl-k": "workspace::ActivatePaneUp",
+      "ctrl-l": "workspace::ActivatePaneRight"
+    }
+  },
+  {
+    // space e closes the file tree when it's focused. Space opens files here by default,
+    // which would make it wait for the chord; enter still opens them.
+    "context": "ProjectPanel && not_editing",
+    "bindings": {
+      "space": null,
+      "space e": "workspace::ToggleLeftDock"
+    }
+  },
+  {
+    "context": "Workspace",
+    "unbind": {
+      "cmd-r": "workspace::ToggleRightDock"
+    }
+  },
+  {
+    "context": "Workspace",
+    "unbind": {
+      "alt-cmd-b": "workspace::ToggleRightDock"
+    }
+  },
+  {
+    "context": "Workspace",
+    "unbind": {
+      "cmd-shift-n": "file_finder::Toggle"
+    }
+  },
+  {
+    "context": "Editor && mode == full",
+    "unbind": {
+      "cmd-shift-n": "file_finder::Toggle"
     }
   }
 ]
