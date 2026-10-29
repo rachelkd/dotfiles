@@ -145,6 +145,13 @@ static void measure_corner(NSNumber* number, Display* d, int attempt) {
 
             // The corner ends where the top row is as opaque as the straight edge.
             uint8_t edge = alpha[size - 1];
+            // A capture during a change, like unlocking the screen, can miss the top
+            // rows. The edge is never transparent, so measure again.
+            if (!edge) {
+                CGContextRelease(context);
+                dispatch_async(dispatch_get_main_queue(), retry);
+                return;
+            }
             size_t reach = 0;
             while (alpha[reach] < edge) reach++;
             // A circle crosses the diagonal at 29% of its radius.
