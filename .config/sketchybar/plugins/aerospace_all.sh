@@ -41,6 +41,7 @@ if [ -n "$DISPLAYS_CHANGED" ]; then
         tries=$((tries + 1))
     done
 
+    "$CONFIG_DIR/helpers/display_items.sh"
     rebuild_monitor_map
     reconcile_spaces "$(aerospace list-workspaces --focused --format '%{workspace}')"
 fi

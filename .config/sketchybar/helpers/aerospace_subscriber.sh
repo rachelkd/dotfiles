@@ -72,9 +72,9 @@ handle_event() {
         mode-changed)
             json_str "$line" mode; mode="$json_str_val"
             if [ "$mode" = "main" ]; then
-                sketchybar --set aerospace_mode drawing=off
+                sketchybar --set '/aerospace_mode\..*/' drawing=off
             else
-                sketchybar --set aerospace_mode drawing=on
+                sketchybar --set '/aerospace_mode\..*/' drawing=on
             fi
             ;;
     esac

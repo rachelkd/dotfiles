@@ -1,8 +1,9 @@
 #!/bin/bash
 
-sketchybar --add item aerospace_mode left \
-    --subscribe aerospace_mode aerospace_mode_change \
-    --set aerospace_mode icon="" \
+sketchybar --add item aerospace_mode.1 left \
+    --subscribe aerospace_mode.1 aerospace_mode_change \
+    --set aerospace_mode.1 icon="" \
+    display=1 \
     script="$CONFIG_DIR/plugins/aerospace_mode.sh" \
     icon.color="$BACKGROUND" \
     icon.padding_left=4 \
@@ -52,11 +53,14 @@ sketchybar --add item spaces_watcher left \
     script="$CONFIG_DIR/plugins/aerospace_all.sh" \
     --subscribe spaces_watcher display_change display_added_or_removed system_woke bar_dark_changed
 
-sketchybar --add item space_separator left \
-    --set space_separator icon="" \
+sketchybar --add item space_separator.1 left \
+    --set space_separator.1 icon="" \
+    display=1 \
     icon.font="JetBrainsMono Nerd Font:ExtraBold:14.0" \
     icon.color="$BACKGROUND" \
     icon.padding_left=4 \
     icon.padding_right=7 \
     label.drawing=off \
     background.drawing=off
+
+"$CONFIG_DIR/helpers/display_items.sh"

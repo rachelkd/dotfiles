@@ -20,7 +20,7 @@ rebuild_monitor_map() { "$CONFIG_DIR/helpers/monitor_map.sh" --rebuild; }
 
 # reconcile_spaces <focused-workspace>
 reconcile_spaces() {
-    local focused="$1" monitors windows workspaces ws mon w app icons display ddid dark text texts focused_text args
+    local focused="$1" monitors windows workspaces ws mon w app icons display ddid dark text texts colors args
 
     [ -f "$MONITOR_MAP_CACHE" ] || rebuild_monitor_map
     monitors=$(<"$MONITOR_MAP_CACHE")
@@ -32,6 +32,17 @@ reconcile_spaces() {
     workspaces=$(aerospace list-workspaces --all --format '%{workspace} %{monitor-id}')
 
     args=()
+
+    # Items without a box get a light color on a dark bar. Each display has its own
+    # mode and separator item, so each matches its own bar.
+    while read -r aid sbid ddid; do
+        text="$BACKGROUND"
+        case "$dark" in *" ${ddid:-none} "*) text="$BRIGHT_WHITE" ;; esac
+        colors="$colors$aid $sbid $text"$'\n'
+        args+=(--set "space_separator.$sbid" icon.color="$text"
+            --set "aerospace_mode.$sbid" icon.color="$text")
+    done <<< "$monitors"
+
     while read -r ws mon; do
         [ -z "$ws" ] && continue
 
@@ -40,18 +51,13 @@ reconcile_spaces() {
             [ "$w" = "$ws" ] && { __icon_map "$app"; icons="$icons$icon_result  "; }
         done <<< "$windows"
 
-        display=1 ddid=""
-        while read -r aid sbid id; do
-            [ "$aid" = "$mon" ] && { display="$sbid" ddid="$id"; break; }
-        done <<< "$monitors"
-
-        # Items without a box get a light color on a dark bar.
-        text="$BACKGROUND"
-        case "$dark" in *" ${ddid:-none} "*) text="$BRIGHT_WHITE" ;; esac
+        display=1 text="$BACKGROUND"
+        while read -r aid sbid color; do
+            [ "$aid" = "$mon" ] && { display="$sbid" text="$color"; break; }
+        done <<< "$colors"
         texts="$texts$ws $text"$'\n'
 
         if [ "$ws" = "$focused" ]; then
-            focused_text="$text"
             args+=(--set "space.$ws"
                 display="$display" drawing=on label="$icons"
                 label.color="$ACCENT_COLOR_2" icon.color="$ACCENT_COLOR_2"
@@ -69,8 +75,6 @@ reconcile_spaces() {
                 background.border_color="$TRANSPARENT")
         fi
     done <<< "$workspaces"
-    args+=(--set space_separator icon.color="${focused_text:-$BACKGROUND}"
-        --set aerospace_mode icon.color="${focused_text:-$BACKGROUND}")
 
     # Read by the hover script, so it needs no IPC of its own.
     printf '%s' "$focused" > "$FOCUSED_CACHE"
