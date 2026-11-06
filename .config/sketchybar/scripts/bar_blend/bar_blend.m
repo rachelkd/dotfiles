@@ -7,8 +7,9 @@
 
 #include "../sketchybar.h"
 
-// Sample below the 1pt light rim at the top of each window.
-#define SAMPLE_DEPTH 1
+// Sample this far below the top of each window, in points. This skips the light rim and
+// the borders that some apps draw there, for example the 2pt border of Rex.
+#define SAMPLE_DEPTH 3
 // Largest corner to measure, in points.
 #define CORNER_MAX 64
 
@@ -43,9 +44,13 @@
 }
 @property NSWindow* window;
 @property CALayer* band;    // the bar: a 1-pixel-high image, stretched
-@property NSArray* windows; // the windows just below the bar at the last check
-@property SCContentFilter* filter; // made again when those windows change
+@property NSArray* numbers; // the windows just below the bar at the last check
+@property NSArray* windows; // their place and title
+@property SCContentFilter* filter; // made again when the window numbers change
 @property SCStreamConfiguration* config;
+@end
+
+@implementation Display
 @end
 
 // macOS moves windows below the menu bar and notch. This window must cover the bar.
@@ -61,14 +66,15 @@
 static char** g_argv;
 static int g_bar_height;
 static NSMutableArray<Display*>* g_displays;
+static NSArray* g_list; // the on-screen windows at the last check, front to back
 static NSMutableDictionary<NSNumber*, Corner*>* g_corners; // by window number
 static dispatch_source_t g_sketchybar;
 static dispatch_source_t g_timer;
-static bool g_covered;     // a window fills a display
+static bool g_covered; // a window fills a display
 
-// These windows stay one level below the bar so its items show. The bar is above normal
-// windows, so it covers their shadows. When a window fills a display, the bar goes
-// below normal windows so that window covers it. sketchybar misses slideshows.
+// These windows stay one level below the bar, so the bar items show. The bar is above
+// normal windows, so it covers their shadows. When a window fills a display, the bar
+// goes below normal windows, and that window covers it. sketchybar misses slideshows.
 static NSWindowLevel window_level(void) {
     return g_covered ? kCGBackstopMenuLevel - 1 : kCGFloatingWindowLevel - 1;
 }
@@ -126,9 +132,11 @@ static void measure_corner(NSNumber* number, Display* d, int attempt) {
             return;
         }
 
+        // Capture the full window. A sourceRect is not always in window coordinates: for
+        // Rex, it starts 32pt above the window.
         SCStreamConfiguration* config = [SCStreamConfiguration new];
-        config.sourceRect = CGRectMake(0, 0, CORNER_MAX, CORNER_MAX);
-        config.width = config.height = CORNER_MAX * scale;
+        config.width = CGRectGetWidth(window.frame) * scale;
+        config.height = CGRectGetHeight(window.frame) * scale;
         config.ignoreShadowsSingleWindow = YES;
         config.showsCursor = NO;
         SCContentFilter* filter = [[SCContentFilter alloc] initWithDesktopIndependentWindow:window];
@@ -138,9 +146,12 @@ static void measure_corner(NSNumber* number, Display* d, int attempt) {
                 dispatch_async(dispatch_get_main_queue(), retry);
                 return;
             }
-            size_t size = CGImageGetWidth(image);
+            // Keep the top left corner. The origin of the context is at the bottom, so
+            // move the image down until its top row is the top row of the context.
+            size_t size = CORNER_MAX * scale;
+            CGFloat width = CGImageGetWidth(image), height = CGImageGetHeight(image);
             CGContextRef context = CGBitmapContextCreate(NULL, size, size, 8, size, NULL, (CGBitmapInfo)kCGImageAlphaOnly);
-            CGContextDrawImage(context, CGRectMake(0, 0, size, size), image);
+            CGContextDrawImage(context, CGRectMake(0, size - height, width, height), image);
             const uint8_t* alpha = CGBitmapContextGetData(context);
 
             // The corner ends where the top row is as opaque as the straight edge.
@@ -191,13 +202,12 @@ static void compute(Display* d) {
     double bar_bottom = CGRectGetMinY(d->bounds) + g_bar_height;
     bool items[d->width]; // below the bar items on the left
     memset(items, 0, sizeof(items));
-    NSArray* list = CFBridgingRelease(CGWindowListCopyWindowInfo(
-        kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements, kCGNullWindowID));
     NSMutableArray<NSNumber*>* numbers = [NSMutableArray new];
-    CGRect bounds[list.count];
+    CGRect bounds[g_list.count];
     int count = 0;
+    int last_pid = 0;
     d->covered = false;
-    for (NSDictionary* window in list) {
+    for (NSDictionary* window in g_list) {
         int layer = [window[(id)kCGWindowLayer] intValue];
         CGRect rect;
         CGRectMakeWithDictionaryRepresentation((__bridge CFDictionaryRef)window[(id)kCGWindowBounds], &rect);
@@ -205,16 +215,27 @@ static void compute(Display* d) {
             && CGRectGetHeight(rect) == g_bar_height && CGRectGetMaxX(rect) <= CGRectGetMidX(d->bounds))
             for (size_t x = column(d, CGRectGetMinX(rect)); x < column(d, CGRectGetMaxX(rect)); x++) items[x] = true;
         if (layer != 0) continue;
+        // An app can put two windows with the same frame on top of each other, as Rex
+        // does. Ignore the window behind. It does not show, and it stops the corner fills.
+        int pid = [window[(id)kCGWindowOwnerPID] intValue];
+        if (count && pid == last_pid && CGRectEqualToRect(rect, bounds[count - 1])) continue;
+        last_pid = pid;
         d->covered |= CGRectContainsRect(rect, d->bounds);
         bounds[count++] = rect;
         [numbers addObject:window[(id)kCGWindowNumber]];
     }
     update_level();
 
-    // Each column goes to the frontmost window that crosses the bar bottom. The column
-    // gets a color only if the window top is at the bar bottom. Rounded corners do not
-    // touch the bar, so a window behind that touches the bar gets those columns. If
-    // there is none, the corner.s window keeps them.
+    // Forget the corners of windows that are not on screen. A window that comes back is
+    // measured again.
+    NSSet* shown = [NSSet setWithArray:numbers];
+    for (NSNumber* number in g_corners.allKeys)
+        if (![shown containsObject:number]) [g_corners removeObjectForKey:number];
+
+    // Each column goes to the frontmost window that crosses the bar bottom. A column gets
+    // a color only if the window top is at the bar bottom. Rounded corners do not touch
+    // the bar, so a window behind that touches the bar gets those columns. If there is
+    // no such window, the window of the corner keeps them.
     int owner[d->width];  // window in each column, -1 for none
     bool clean[d->width]; // the sampled pixel is from the owner
     bool claimed[d->width];
@@ -297,8 +318,8 @@ static void compute(Display* d) {
 
             x = side ? CGRectGetMaxX(bounds[i]) - reach : CGRectGetMinX(bounds[i]);
             bool overlapped = false;
-            for (int j = 0; j < count; j++)
-                overlapped |= j != i && CGRectIntersectsRect(bounds[j], CGRectMake(x, bar_bottom, reach, reach));
+            for (int j = 0; j < count && !overlapped; j++)
+                overlapped = j != i && CGRectIntersectsRect(bounds[j], CGRectMake(x, bar_bottom, reach, reach));
             size_t next = side ? column(d, x) - 1 : column(d, x + reach);
             if (overlapped || next >= d->width || owner[next] != i || !clean[next]) continue;
             CALayer* fill = [CALayer layer];
@@ -325,13 +346,13 @@ static void compute(Display* d) {
     [CATransaction commit];
     CGImageRelease(image);
 
-    // The bar is dark if its mean luma behind the left items is below mid-gray. Below a
-    // transparent column, the row shows what the bar shows.
+    // The bar is dark if its mean luma behind the left items is below mid-gray. A
+    // transparent column counts as light, so items over the wallpaper stay dark.
     double luma = 0;
     size_t n = 0;
     for (size_t x = 0; x < d->width; x++) {
         if (!items[x]) continue;
-        uint32_t c = colors[x] ? colors[x] : d->row[x];
+        uint32_t c = colors[x] ? colors[x] : 0xffffffff;
         luma += 0.2126 * (c >> 16 & 0xff) + 0.7152 * (c >> 8 & 0xff) + 0.0722 * (c & 0xff);
         n++;
     }
@@ -395,32 +416,39 @@ static void screenshot(Display* d) {
 // Checks the windows just below the bar on each display: their place, order and
 // title. A browser title changes with the tab, and so does its color. Windows inside
 // the bar, like the recording indicator that each screenshot shows, do not count.
+// compute uses the same window list.
 static void tick(void) {
     static int ticks;
     bool periodic = ++ticks % 20 == 0;
-    NSArray* list = CFBridgingRelease(CGWindowListCopyWindowInfo(
+    g_list = CFBridgingRelease(CGWindowListCopyWindowInfo(
         kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements, kCGNullWindowID));
+    pid_t own_pid = getpid();
     for (Display* d in g_displays) {
         CGRect below = CGRectMake(CGRectGetMinX(d->bounds), CGRectGetMinY(d->bounds) + g_bar_height,
                                   CGRectGetWidth(d->bounds), CORNER_MAX);
+        NSMutableArray* numbers = [NSMutableArray new];
         NSMutableArray* windows = [NSMutableArray new];
-        for (NSDictionary* w in list) {
+        for (NSDictionary* w in g_list) {
             CGRect rect;
             CGRectMakeWithDictionaryRepresentation((__bridge CFDictionaryRef)w[(id)kCGWindowBounds], &rect);
-            if (CGRectIntersectsRect(rect, below) && [w[(id)kCGWindowOwnerPID] intValue] != getpid())
-                [windows addObject:@[w[(id)kCGWindowNumber], w[(id)kCGWindowBounds], w[(id)kCGWindowName] ?: @""]];
+            if (!CGRectIntersectsRect(rect, below) || [w[(id)kCGWindowOwnerPID] intValue] == own_pid) continue;
+            [numbers addObject:w[(id)kCGWindowNumber]];
+            [windows addObject:@[w[(id)kCGWindowBounds], w[(id)kCGWindowName] ?: @""]];
+        }
+        // The filter leaves out windows by number, so only new or closed windows change
+        // it. Making it again lists all windows on the system.
+        if (![numbers isEqualToArray:d.numbers]) {
+            d.numbers = numbers;
+            d.filter = nil;
+            d->moved = true;
         }
         if (![windows isEqualToArray:d.windows]) {
             d.windows = windows;
-            d.filter = nil;
             d->moved = true;
         }
         if (d->moved || periodic || d->changing) screenshot(d);
     }
 }
-
-@implementation Display
-@end
 
 static void display_changed(CGDirectDisplayID display, CGDisplayChangeSummaryFlags flags, void* info) {
     if (!(flags & kCGDisplayBeginConfigurationFlag)) restart();
