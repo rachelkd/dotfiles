@@ -15,6 +15,9 @@
 
 // Top left corner of a window, in points. The top right corner is its mirror image.
 @interface Corner : NSObject
+@property bool touching;   // the window top was at the bar bottom during the measurement
+@property NSUInteger count; // windows measured together, see compute
+@property bool clear;      // the window is transparent below the bar, like an effects overlay
 @property CGFloat reach;   // the edge is not fully opaque this far in from the side
 @property CGFloat radius;  // radius of the visible curve; the edge fades out past it
 @property CGImageRef mask; // opaque over the gap outside the window
@@ -110,66 +113,92 @@ static void restart(void) {
 
 static void compute(Display* d);
 
-// macOS does not give the corner radius, so read it from the alpha of a capture of the
-// window. Until then, the corners are square.
-static void measure_corner(NSNumber* number, Display* d, int attempt) {
-    g_corners[number] = [Corner new];
+// Reads the alpha of windows that count as one window, front first. For windows at the bar
+// bottom, this gives their corner, because macOS does not give the corner radius. Until
+// then, the corners are square. It also finds windows that do not show below the bar. The
+// frame is their part on the display. flip is set if they go past its left side.
+static void measure(NSArray<NSNumber*>* numbers, CGRect frame, bool flip, Display* d, bool touching, int attempt) {
+    // Keep the last corner of a window that is still at the bar bottom until the new one
+    // is measured. Its radius keeps the windows counting as one.
+    Corner* known = g_corners[numbers[0]];
+    Corner* pending = known && known.touching == touching ? known : [Corner new];
+    pending.touching = touching;
+    pending.count = numbers.count;
+    g_corners[numbers[0]] = pending;
     // A new window can be missing from the capture list.
     void (^retry)(void) = ^{
         if (attempt < 3)
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (attempt + 1) * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-                measure_corner(number, d, attempt + 1);
+                measure(numbers, frame, flip, d, touching, attempt + 1);
             });
     };
     CGFloat scale = d->scale;
     [SCShareableContent getShareableContentExcludingDesktopWindows:YES onScreenWindowsOnly:YES
                                                  completionHandler:^(SCShareableContent* content, NSError* error) {
-        SCWindow* window = nil;
+        NSMutableArray<SCWindow*>* windows = [NSMutableArray new];
         for (SCWindow* w in content.windows)
-            if (w.windowID == number.unsignedIntValue) window = w;
-        if (!window) {
+            if ([numbers containsObject:@(w.windowID)]) [windows addObject:w];
+        SCDisplay* display = nil;
+        for (SCDisplay* s in content.displays)
+            if (s.displayID == d->display_id) display = s;
+        if (windows.count < numbers.count || !display) {
             dispatch_async(dispatch_get_main_queue(), retry);
             return;
         }
 
-        // Capture the full window. A sourceRect is not always in window coordinates: for
-        // Rex, it starts 32pt above the window.
+        // Capture the display with only these windows in it. A window capture can include
+        // child windows, like those of Rex, and then its coordinates move. For windows at
+        // the bar bottom, capture the top left corner. If they go past the left side of
+        // the display, capture the top right corner and flip it. For windows across the
+        // bar bottom, capture the part under the bar.
+        CGFloat left = CGRectGetMinX(frame) - CGRectGetMinX(d->bounds);
+        CGFloat top = fmax(CGRectGetMinY(frame) - CGRectGetMinY(d->bounds), 0);
+        CGRect rect = !touching ? CGRectMake(left, top, CGRectGetWidth(frame), g_bar_height - top)
+            : CGRectMake(flip ? left + CGRectGetWidth(frame) - CORNER_MAX : left, g_bar_height, CORNER_MAX, CORNER_MAX);
         SCStreamConfiguration* config = [SCStreamConfiguration new];
-        config.width = CGRectGetWidth(window.frame) * scale;
-        config.height = CGRectGetHeight(window.frame) * scale;
-        config.ignoreShadowsSingleWindow = YES;
+        config.sourceRect = rect;
+        config.width = CGRectGetWidth(rect) * scale;
+        config.height = CGRectGetHeight(rect) * scale;
+        config.backgroundColor = CGColorGetConstantColor(kCGColorClear);
+        config.ignoreShadowsDisplay = YES;
         config.showsCursor = NO;
-        SCContentFilter* filter = [[SCContentFilter alloc] initWithDesktopIndependentWindow:window];
+        SCContentFilter* filter = [[SCContentFilter alloc] initWithDisplay:display includingWindows:windows];
         [SCScreenshotManager captureImageWithFilter:filter configuration:config
                                   completionHandler:^(CGImageRef image, NSError* error) {
             if (!image) {
                 dispatch_async(dispatch_get_main_queue(), retry);
                 return;
             }
-            // Keep the top left corner. The origin of the context is at the bottom, so
-            // move the image down until its top row is the top row of the context.
-            size_t size = CORNER_MAX * scale;
-            CGFloat width = CGImageGetWidth(image), height = CGImageGetHeight(image);
-            CGContextRef context = CGBitmapContextCreate(NULL, size, size, 8, size, NULL, (CGBitmapInfo)kCGImageAlphaOnly);
-            CGContextDrawImage(context, CGRectMake(0, size - height, width, height), image);
+            size_t width = CGImageGetWidth(image), height = CGImageGetHeight(image);
+            CGContextRef context = CGBitmapContextCreate(NULL, width, height, 8, width, NULL, (CGBitmapInfo)kCGImageAlphaOnly);
+            if (flip) CGContextConcatCTM(context, CGAffineTransformMake(-1, 0, 0, 1, width, 0));
+            CGContextDrawImage(context, CGRectMake(0, 0, width, height), image);
             const uint8_t* alpha = CGBitmapContextGetData(context);
+            Corner* corner = [Corner new];
+            corner.touching = touching;
+            corner.count = numbers.count;
+
+            // A window that is fully transparent here, like an overlay for effects, does
+            // not show in the bar.
+            bool clear = true;
+            for (size_t i = 0; i < width * height && clear; i++) clear = !alpha[i];
+            corner.clear = clear;
 
             // The corner ends where the top row is as opaque as the straight edge.
-            uint8_t edge = alpha[size - 1];
-            // A capture during a change, like unlocking the screen, can miss the top
-            // rows. The edge is never transparent, so measure again.
-            if (!edge) {
+            uint8_t edge = alpha[width - 1];
+            // A capture during a change, like unlocking the screen, can miss the top rows.
+            // The edge is never transparent, so measure again.
+            if (touching && !clear && !edge) {
                 CGContextRelease(context);
                 dispatch_async(dispatch_get_main_queue(), retry);
                 return;
             }
             size_t reach = 0;
-            while (alpha[reach] < edge) reach++;
+            while (touching && !clear && alpha[reach] < edge) reach++;
             // A circle crosses the diagonal at 29% of its radius.
             size_t diagonal = 0;
-            while (diagonal < reach && alpha[diagonal * size + diagonal] < edge / 2) diagonal++;
+            while (diagonal < reach && alpha[diagonal * width + diagonal] < edge / 2) diagonal++;
 
-            Corner* corner = [Corner new];
             corner.reach = reach / scale;
             corner.radius = MIN(diagonal / (1 - M_SQRT1_2), reach) / scale;
             // The fill is above the window. It covers only the transparent part, so the
@@ -179,14 +208,14 @@ static void measure_corner(NSNumber* number, Display* d, int attempt) {
                 uint8_t* gap = CGBitmapContextGetData(mask);
                 for (size_t y = 0; y < reach; y++)
                     for (size_t x = 0; x < reach; x++)
-                        gap[y * reach + x] = 255 - MIN(alpha[y * size + x], edge) * 255 / edge;
+                        gap[y * reach + x] = 255 - MIN(alpha[y * width + x], edge) * 255 / edge;
                 corner.mask = CGBitmapContextCreateImage(mask);
                 CGContextRelease(mask);
             }
             CGContextRelease(context);
 
             dispatch_async(dispatch_get_main_queue(), ^{
-                g_corners[number] = corner;
+                g_corners[numbers[0]] = corner;
                 for (Display* display in g_displays) compute(display);
             });
         }];
@@ -202,10 +231,11 @@ static void compute(Display* d) {
     double bar_bottom = CGRectGetMinY(d->bounds) + g_bar_height;
     bool items[d->width]; // below the bar items on the left
     memset(items, 0, sizeof(items));
-    NSMutableArray<NSNumber*>* numbers = [NSMutableArray new];
-    CGRect bounds[g_list.count];
+    NSMutableArray<NSMutableArray<NSNumber*>*>* groups = [NSMutableArray new]; // windows of each bounds, front first
+    NSMutableSet<NSNumber*>* shown = [NSMutableSet new];
+    CGRect bounds[g_list.count]; // the part on this display
+    bool cut[g_list.count];      // the windows go past the left side of the display
     int count = 0;
-    int last_pid = 0;
     d->covered = false;
     for (NSDictionary* window in g_list) {
         int layer = [window[(id)kCGWindowLayer] intValue];
@@ -215,20 +245,35 @@ static void compute(Display* d) {
             && CGRectGetHeight(rect) == g_bar_height && CGRectGetMaxX(rect) <= CGRectGetMidX(d->bounds))
             for (size_t x = column(d, CGRectGetMinX(rect)); x < column(d, CGRectGetMaxX(rect)); x++) items[x] = true;
         if (layer != 0) continue;
-        // An app can put two windows with the same frame on top of each other, as Rex
-        // does. Ignore the window behind. It does not show, and it stops the corner fills.
-        int pid = [window[(id)kCGWindowOwnerPID] intValue];
-        if (count && pid == last_pid && CGRectEqualToRect(rect, bounds[count - 1])) continue;
-        last_pid = pid;
+        NSNumber* number = window[(id)kCGWindowNumber];
+        [shown addObject:number];
+        Corner* known = g_corners[number];
+        if (known.clear && known.touching == (CGRectGetMinY(rect) == bar_bottom)) continue;
         d->covered |= CGRectContainsRect(rect, d->bounds);
+        bool past = CGRectGetMinX(rect) < CGRectGetMinX(d->bounds);
+        rect = CGRectIntersection(rect, CGRectMake(CGRectGetMinX(d->bounds), CGRectGetMinY(rect), CGRectGetWidth(d->bounds), CGRectGetHeight(rect)));
+        if (CGRectIsNull(rect)) continue;
+        // A window behind with both top corners inside the curves of the window in front
+        // shows only as thin strips there, so the two count as one window. Rex puts a
+        // child window over its window like this, at the same frame or 1pt off.
+        if (count && CGRectGetMinY(rect) == bar_bottom && CGRectGetMinY(bounds[count - 1]) == bar_bottom) {
+            CGFloat radius = g_corners[groups[count - 1][0]].radius;
+            if (fabs(CGRectGetMinX(rect) - CGRectGetMinX(bounds[count - 1])) < radius
+                && fabs(CGRectGetMaxX(rect) - CGRectGetMaxX(bounds[count - 1])) < radius) {
+                bounds[count - 1] = CGRectUnion(bounds[count - 1], rect);
+                cut[count - 1] |= past;
+                [groups[count - 1] addObject:number];
+                continue;
+            }
+        }
+        cut[count] = past;
         bounds[count++] = rect;
-        [numbers addObject:window[(id)kCGWindowNumber]];
+        [groups addObject:[NSMutableArray arrayWithObject:number]];
     }
     update_level();
 
-    // Forget the corners of windows that are not on screen. A window that comes back is
-    // measured again.
-    NSSet* shown = [NSSet setWithArray:numbers];
+    // Forget the windows that are not on screen. A window that comes back is measured
+    // again.
     for (NSNumber* number in g_corners.allKeys)
         if (![shown containsObject:number]) [g_corners removeObjectForKey:number];
 
@@ -247,11 +292,13 @@ static void compute(Display* d) {
         corners[i] = nil;
         if (CGRectGetMinY(bounds[i]) > bar_bottom || CGRectGetMaxY(bounds[i]) <= bar_bottom) continue;
 
+        // A window that moves to or from the bar bottom is measured again, and so is a
+        // window that starts or stops counting as one with another.
         bool touching = CGRectGetMinY(bounds[i]) == bar_bottom;
-        if (touching) {
-            if (!g_corners[numbers[i]]) measure_corner(numbers[i], d, 0);
-            corners[i] = g_corners[numbers[i]];
-        }
+        Corner* known = g_corners[groups[i][0]];
+        if (!known || known.touching != touching || known.count != groups[i].count)
+            measure(groups[i], bounds[i], cut[i], d, touching, 0);
+        if (touching) corners[i] = g_corners[groups[i][0]];
         // The window gets the bar from the end of its visible curve. The sampled row can
         // cross the outline anywhere in the corner, so only pixels past the reach are clean.
         size_t left = column(d, CGRectGetMinX(bounds[i])), right = column(d, CGRectGetMaxX(bounds[i]));
