@@ -1,33 +1,17 @@
-// Paints each bar column in the color of the window top edge below it. Fills the gaps
-// at rounded corners. Curves the color change where a corner is over another window.
-// sketchybar starts this helper, so sketchybar needs Screen Recording permission.
+// Paints the bar in the colors of the windows whose top is at the bar bottom, and fills
+// the gaps at their rounded top corners. sketchybar starts this helper, so sketchybar
+// needs Screen Recording permission.
 #import <AppKit/AppKit.h>
 #import <QuartzCore/QuartzCore.h>
 #import <ScreenCaptureKit/ScreenCaptureKit.h>
 
 #include "../sketchybar.h"
 
-// Sample this far below the top of each window, in points. This skips the light rim and
-// the borders that some apps draw there, for example the 2pt border of Rex.
+// Sample this far below the bar, in points. This skips the light rim and the borders that
+// some apps draw on their top edge, for example the 2pt border of Rex.
 #define SAMPLE_DEPTH 3
-// Largest corner to measure, in points.
-#define CORNER_MAX 64
-
-// Top left corner of a window, in points. The top right corner is its mirror image.
-@interface Corner : NSObject
-@property bool touching;   // the window top was at the bar bottom during the measurement
-@property NSUInteger count; // windows measured together, see compute
-@property bool clear;      // the window is transparent below the bar, like an effects overlay
-@property CGFloat reach;   // the edge is not fully opaque this far in from the side
-@property CGFloat radius;  // radius of the visible curve; the edge fades out past it
-@property CGImageRef mask; // opaque over the gap outside the window
-@end
-
-@implementation Corner
-- (void)dealloc {
-    CGImageRelease(_mask);
-}
-@end
+// Depth below the bar that corner gaps can reach, in points.
+#define CORNER_DEPTH 32
 
 // The bar on one display.
 @interface Display : NSObject {
@@ -36,21 +20,29 @@
     CGRect bounds;  // global coordinates in points
     CGFloat scale;  // pixels per point
     size_t width;   // in pixels, one column per pixel
+    size_t rows;    // CORNER_DEPTH in pixels
     CGColorSpaceRef space; // the display color space; draw in it so colors do not shift
-    uint32_t* row;    // last screenshot of the row, BGRA
+    uint32_t* row;    // screen colors SAMPLE_DEPTH below the bar, BGRA
+    uint32_t* colors; // bar columns, BGRA, 0 is transparent
     bool capturing;   // a screenshot is in progress
     bool changing;    // the last screenshot found a change
     bool moved;       // the windows just below the bar changed
-    uint32_t* colors; // bar columns, BGRA, 0 is transparent
     bool covered;     // a window fills the display (full screen, slideshow)
     bool dark;        // the bar is dark behind the left items
 }
 @property NSWindow* window;
-@property CALayer* band;    // the bar: a 1-pixel-high image, stretched
-@property NSArray* numbers; // the windows just below the bar at the last check
-@property NSArray* windows; // their place and title
-@property SCContentFilter* filter; // made again when the window numbers change
-@property SCStreamConfiguration* config;
+@property CALayer* band;     // the bar: a 1-pixel-high image, stretched
+@property CALayer* fill;     // the same image below the bar, masked to the corner gaps
+@property NSArray* numbers;  // the windows just below the bar at the last check
+@property NSArray* touching; // those whose top is at the bar bottom, front first
+@property NSArray* windows;  // their place and title
+@property SCContentFilter* screen; // made again when the window numbers change
+@property NSArray* filters;  // each window at the bar bottom alone
+@property NSArray* filtered; // their window numbers
+@property NSArray<NSData*>* shapes; // the alpha below the bar of each, by row
+@property NSArray* shaped;   // their window numbers
+@property SCStreamConfiguration* row_config;
+@property SCStreamConfiguration* shape_config;
 @end
 
 @implementation Display
@@ -70,7 +62,6 @@ static char** g_argv;
 static int g_bar_height;
 static NSMutableArray<Display*>* g_displays;
 static NSArray* g_list; // the on-screen windows at the last check, front to back
-static NSMutableDictionary<NSNumber*, Corner*>* g_corners; // by window number
 static dispatch_source_t g_sketchybar;
 static dispatch_source_t g_timer;
 static bool g_covered; // a window fills a display
@@ -111,293 +102,135 @@ static void restart(void) {
     execv(g_argv[0], g_argv);
 }
 
-static void compute(Display* d);
-
-// Reads the alpha of windows that count as one window, front first. For windows at the bar
-// bottom, this gives their corner, because macOS does not give the corner radius. Until
-// then, the corners are square. It also finds windows that do not show below the bar. The
-// frame is their part on the display. flip is set if they go past its left side.
-static void measure(NSArray<NSNumber*>* numbers, CGRect frame, bool flip, Display* d, bool touching, int attempt) {
-    // Keep the last corner of a window that is still at the bar bottom until the new one
-    // is measured. Its radius keeps the windows counting as one.
-    Corner* known = g_corners[numbers[0]];
-    Corner* pending = known && known.touching == touching ? known : [Corner new];
-    pending.touching = touching;
-    pending.count = numbers.count;
-    g_corners[numbers[0]] = pending;
-    // A new window can be missing from the capture list.
-    void (^retry)(void) = ^{
-        if (attempt < 3)
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (attempt + 1) * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-                measure(numbers, frame, flip, d, touching, attempt + 1);
-            });
-    };
-    CGFloat scale = d->scale;
-    [SCShareableContent getShareableContentExcludingDesktopWindows:YES onScreenWindowsOnly:YES
-                                                 completionHandler:^(SCShareableContent* content, NSError* error) {
-        NSMutableArray<SCWindow*>* windows = [NSMutableArray new];
-        for (SCWindow* w in content.windows)
-            if ([numbers containsObject:@(w.windowID)]) [windows addObject:w];
-        SCDisplay* display = nil;
-        for (SCDisplay* s in content.displays)
-            if (s.displayID == d->display_id) display = s;
-        if (windows.count < numbers.count || !display) {
-            dispatch_async(dispatch_get_main_queue(), retry);
-            return;
-        }
-
-        // Capture the display with only these windows in it. A window capture can include
-        // child windows, like those of Rex, and then its coordinates move. For windows at
-        // the bar bottom, capture the top left corner. If they go past the left side of
-        // the display, capture the top right corner and flip it. For windows across the
-        // bar bottom, capture the part under the bar.
-        CGFloat left = CGRectGetMinX(frame) - CGRectGetMinX(d->bounds);
-        CGFloat top = fmax(CGRectGetMinY(frame) - CGRectGetMinY(d->bounds), 0);
-        CGRect rect = !touching ? CGRectMake(left, top, CGRectGetWidth(frame), g_bar_height - top)
-            : CGRectMake(flip ? left + CGRectGetWidth(frame) - CORNER_MAX : left, g_bar_height, CORNER_MAX, CORNER_MAX);
-        SCStreamConfiguration* config = [SCStreamConfiguration new];
-        config.sourceRect = rect;
-        config.width = CGRectGetWidth(rect) * scale;
-        config.height = CGRectGetHeight(rect) * scale;
-        config.backgroundColor = CGColorGetConstantColor(kCGColorClear);
-        config.ignoreShadowsDisplay = YES;
-        config.showsCursor = NO;
-        SCContentFilter* filter = [[SCContentFilter alloc] initWithDisplay:display includingWindows:windows];
-        [SCScreenshotManager captureImageWithFilter:filter configuration:config
-                                  completionHandler:^(CGImageRef image, NSError* error) {
-            if (!image) {
-                dispatch_async(dispatch_get_main_queue(), retry);
-                return;
-            }
-            size_t width = CGImageGetWidth(image), height = CGImageGetHeight(image);
-            CGContextRef context = CGBitmapContextCreate(NULL, width, height, 8, width, NULL, (CGBitmapInfo)kCGImageAlphaOnly);
-            if (flip) CGContextConcatCTM(context, CGAffineTransformMake(-1, 0, 0, 1, width, 0));
-            CGContextDrawImage(context, CGRectMake(0, 0, width, height), image);
-            const uint8_t* alpha = CGBitmapContextGetData(context);
-            Corner* corner = [Corner new];
-            corner.touching = touching;
-            corner.count = numbers.count;
-
-            // A window that is fully transparent here, like an overlay for effects, does
-            // not show in the bar.
-            bool clear = true;
-            for (size_t i = 0; i < width * height && clear; i++) clear = !alpha[i];
-            corner.clear = clear;
-
-            // The corner ends where the top row is as opaque as the straight edge.
-            uint8_t edge = alpha[width - 1];
-            // A capture during a change, like unlocking the screen, can miss the top rows.
-            // The edge is never transparent, so measure again.
-            if (touching && !clear && !edge) {
-                CGContextRelease(context);
-                dispatch_async(dispatch_get_main_queue(), retry);
-                return;
-            }
-            size_t reach = 0;
-            while (touching && !clear && alpha[reach] < edge) reach++;
-            // A circle crosses the diagonal at 29% of its radius.
-            size_t diagonal = 0;
-            while (diagonal < reach && alpha[diagonal * width + diagonal] < edge / 2) diagonal++;
-
-            corner.reach = reach / scale;
-            corner.radius = MIN(diagonal / (1 - M_SQRT1_2), reach) / scale;
-            // The fill is above the window. It covers only the transparent part, so the
-            // window outline and its soft edge stay.
-            if (reach > 0) {
-                CGContextRef mask = CGBitmapContextCreate(NULL, reach, reach, 8, reach, NULL, (CGBitmapInfo)kCGImageAlphaOnly);
-                uint8_t* gap = CGBitmapContextGetData(mask);
-                for (size_t y = 0; y < reach; y++)
-                    for (size_t x = 0; x < reach; x++)
-                        gap[y * reach + x] = 255 - MIN(alpha[y * width + x], edge) * 255 / edge;
-                corner.mask = CGBitmapContextCreateImage(mask);
-                CGContextRelease(mask);
-            }
-            CGContextRelease(context);
-
-            dispatch_async(dispatch_get_main_queue(), ^{
-                g_corners[numbers[0]] = corner;
-                for (Display* display in g_displays) compute(display);
-            });
-        }];
-    }];
-}
-
 static size_t column(Display* d, double x) {
     return fmin(fmax((x - CGRectGetMinX(d->bounds)) * d->scale, 0), d->width);
 }
 
-// Sets the bar colors from the last screenshot and draws the bar.
+// Sets the bar colors from the last screenshots and draws the bar.
 static void compute(Display* d) {
-    double bar_bottom = CGRectGetMinY(d->bounds) + g_bar_height;
-    bool items[d->width]; // below the bar items on the left
+    size_t width = d->width, rows = d->rows;
+    bool items[width]; // below the bar items on the left
     memset(items, 0, sizeof(items));
-    NSMutableArray<NSMutableArray<NSNumber*>*>* groups = [NSMutableArray new]; // windows of each bounds, front first
-    NSMutableSet<NSNumber*>* shown = [NSMutableSet new];
-    CGRect bounds[g_list.count]; // the part on this display
-    bool cut[g_list.count];      // the windows go past the left side of the display
-    int count = 0;
+    NSMutableDictionary<NSNumber*, NSValue*>* frames = [NSMutableDictionary new];
     d->covered = false;
     for (NSDictionary* window in g_list) {
-        int layer = [window[(id)kCGWindowLayer] intValue];
         CGRect rect;
         CGRectMakeWithDictionaryRepresentation((__bridge CFDictionaryRef)window[(id)kCGWindowBounds], &rect);
         if ([window[(id)kCGWindowOwnerName] isEqualToString:@"sketchybar"] && CGRectGetMinY(rect) == CGRectGetMinY(d->bounds)
             && CGRectGetHeight(rect) == g_bar_height && CGRectGetMaxX(rect) <= CGRectGetMidX(d->bounds))
             for (size_t x = column(d, CGRectGetMinX(rect)); x < column(d, CGRectGetMaxX(rect)); x++) items[x] = true;
-        if (layer != 0) continue;
-        NSNumber* number = window[(id)kCGWindowNumber];
-        [shown addObject:number];
-        Corner* known = g_corners[number];
-        if (known.clear && known.touching == (CGRectGetMinY(rect) == bar_bottom)) continue;
+        if ([window[(id)kCGWindowLayer] intValue] != 0) continue;
         d->covered |= CGRectContainsRect(rect, d->bounds);
-        bool past = CGRectGetMinX(rect) < CGRectGetMinX(d->bounds);
-        rect = CGRectIntersection(rect, CGRectMake(CGRectGetMinX(d->bounds), CGRectGetMinY(rect), CGRectGetWidth(d->bounds), CGRectGetHeight(rect)));
-        if (CGRectIsNull(rect)) continue;
-        // A window behind with both top corners inside the curves of the window in front
-        // shows only as thin strips there, so the two count as one window. Rex puts a
-        // child window over its window like this, at the same frame or 1pt off.
-        if (count && CGRectGetMinY(rect) == bar_bottom && CGRectGetMinY(bounds[count - 1]) == bar_bottom) {
-            CGFloat radius = g_corners[groups[count - 1][0]].radius;
-            if (fabs(CGRectGetMinX(rect) - CGRectGetMinX(bounds[count - 1])) < radius
-                && fabs(CGRectGetMaxX(rect) - CGRectGetMaxX(bounds[count - 1])) < radius) {
-                bounds[count - 1] = CGRectUnion(bounds[count - 1], rect);
-                cut[count - 1] |= past;
-                [groups[count - 1] addObject:number];
-                continue;
-            }
-        }
-        cut[count] = past;
-        bounds[count++] = rect;
-        [groups addObject:[NSMutableArray arrayWithObject:number]];
+        frames[window[(id)kCGWindowNumber]] = [NSValue valueWithRect:rect];
     }
     update_level();
 
-    // Forget the windows that are not on screen. A window that comes back is measured
-    // again.
-    for (NSNumber* number in g_corners.allKeys)
-        if (![shown containsObject:number]) [g_corners removeObjectForKey:number];
-
-    // Each column goes to the frontmost window that crosses the bar bottom. A column gets
-    // a color only if the window top is at the bar bottom. Rounded corners do not touch
-    // the bar, so a window behind that touches the bar gets those columns. If there is
-    // no such window, the window of the corner keeps them.
-    int owner[d->width];  // window in each column, -1 for none
-    bool clean[d->width]; // the sampled pixel is from the owner
-    bool claimed[d->width];
-    Corner* corners[count];
-    memset(owner, -1, sizeof(owner));
-    memset(clean, 0, sizeof(clean));
-    memset(claimed, 0, sizeof(claimed));
-    for (int i = 0; i < count; i++) {
-        corners[i] = nil;
-        if (CGRectGetMinY(bounds[i]) > bar_bottom || CGRectGetMaxY(bounds[i]) <= bar_bottom) continue;
-
-        // A window that moves to or from the bar bottom is measured again, and so is a
-        // window that starts or stops counting as one with another.
-        bool touching = CGRectGetMinY(bounds[i]) == bar_bottom;
-        Corner* known = g_corners[groups[i][0]];
-        if (!known || known.touching != touching || known.count != groups[i].count)
-            measure(groups[i], bounds[i], cut[i], d, touching, 0);
-        if (touching) corners[i] = g_corners[groups[i][0]];
-        // The window gets the bar from the end of its visible curve. The sampled row can
-        // cross the outline anywhere in the corner, so only pixels past the reach are clean.
-        size_t left = column(d, CGRectGetMinX(bounds[i])), right = column(d, CGRectGetMaxX(bounds[i]));
-        size_t round_left = column(d, CGRectGetMinX(bounds[i]) + corners[i].radius);
-        size_t round_right = column(d, CGRectGetMaxX(bounds[i]) - corners[i].radius);
-        size_t edge_left = column(d, CGRectGetMinX(bounds[i]) + corners[i].reach);
-        size_t edge_right = column(d, CGRectGetMaxX(bounds[i]) - corners[i].reach);
-        for (size_t x = left; x < right; x++) {
-            if (claimed[x]) continue;
-            if (x >= round_left && x < round_right) {
-                claimed[x] = true;
-                clean[x] = touching && owner[x] < 0 && x >= edge_left && x < edge_right;
-                owner[x] = touching ? i : -1;
-            } else if (touching && owner[x] < 0) {
-                owner[x] = i;
-            }
+    // For each column, the frontmost window at the bar bottom that reaches the bar, and the
+    // first row where any of them is opaque: 0 where a window reaches the bar, more in a
+    // corner gap, and rows where there is no window.
+    NSArray<NSData*>* shapes = d.shapes;
+    int count = (int)shapes.count;
+    const uint8_t* alpha[count + 1];
+    for (int i = 0; i < count; i++) alpha[i] = shapes[i].bytes;
+    int owner[width];
+    size_t top[width];
+    for (size_t x = 0; x < width; x++) {
+        owner[x] = -1;
+        top[x] = rows;
+        for (int i = 0; i < count; i++) {
+            size_t y = 0;
+            while (y < top[x] && alpha[i][y * width + x] < 128) y++;
+            top[x] = y;
+            if (!y && owner[x] < 0) owner[x] = i;
         }
     }
 
-    // Clean columns use their own pixel. The other columns are below a corner. They copy
-    // the next pixel of their owner, from the left or else from the right.
+    // A column where a window reaches the bar takes the screen color below it. A column
+    // in a corner copies the next column toward the inside of its window, where the
+    // corner is lower.
     uint32_t* colors = d->colors;
-    for (size_t x = 0; x < d->width; x++) colors[x] = clean[x] ? d->row[x] : 0;
-    for (size_t x = 1; x < d->width; x++)
-        if (!clean[x] && owner[x] >= 0 && owner[x] == owner[x - 1]) colors[x] = colors[x - 1];
-    for (size_t x = d->width - 1; x-- > 0;)
-        if (!colors[x] && owner[x] >= 0 && owner[x] == owner[x + 1]) colors[x] = colors[x + 1];
+    for (size_t x = 0; x < width; x++) colors[x] = top[x] ? 0 : d->row[x];
+    for (size_t x = 1; x < width; x++)
+        if (!colors[x] && top[x] < rows && top[x - 1] <= top[x]) colors[x] = colors[x - 1];
+    for (size_t x = width - 1; x-- > 0;)
+        if (!colors[x] && top[x] < rows && top[x + 1] <= top[x]) colors[x] = colors[x + 1];
 
-    // If a corner is over another window that touches the bar, the bar changes color
-    // along a reversed curve of the corner radius. Then the window edge continues up
-    // into the bar. If no other window overlaps a corner, its gap shows the bar columns.
+    // If a corner is over a window behind that reaches the bar, the bar keeps the color of
+    // that window above the corner, and changes color along a reversed curve of the corner
+    // radius. Then the window edge continues up into the bar.
     NSMutableArray<CALayer*>* layers = [NSMutableArray arrayWithObject:d.band];
-    NSMutableArray<CALayer*>* fills = [NSMutableArray new];
-    CGFloat origin = CGRectGetMinX(d->bounds), span = CGRectGetWidth(d->bounds);
+    CGFloat origin = CGRectGetMinX(d->bounds);
+    NSArray* shaped = d.shaped;
     for (int i = 0; i < count; i++) {
-        Corner* corner = corners[i];
-        if (!corner.mask) continue;
-        CGFloat radius = corner.radius, reach = corner.reach;
+        NSValue* value = frames[shaped[i]];
+        if (!value) continue;
+        CGRect frame = value.rectValue;
         for (int side = 0; side < 2; side++) {
-            // The curve is in the columns after the corner. The window behind has the
-            // corner columns.
-            CGFloat x = side ? CGRectGetMaxX(bounds[i]) - 2 * radius : CGRectGetMinX(bounds[i]) + radius;
+            ssize_t edge = side ? (ssize_t)column(d, CGRectGetMaxX(frame)) - 1 : (ssize_t)column(d, CGRectGetMinX(frame));
+            if (edge < 0 || edge >= (ssize_t)width || owner[edge] <= i) continue;
+            // A circle crosses the diagonal from its corner at 29% of its radius.
+            ssize_t step = 0, room = side ? edge : (ssize_t)width - 1 - edge;
+            while (step < (ssize_t)rows && step < room && alpha[i][step * width + edge + (side ? -step : step)] < 128) step++;
+            // Whole pixels, so the curve ends on the columns where the bar changes color.
+            CGFloat radius = round(step / (1 - M_SQRT1_2)) / d->scale;
+            CGFloat x = side ? CGRectGetMaxX(frame) - 2 * radius : CGRectGetMinX(frame) + radius;
             size_t from = column(d, x), to = column(d, x + radius);
-            size_t behind = side ? to : from - 1, front = side ? from - 1 : to;
-            if (from > 0 && from < to && to < d->width && owner[behind] >= 0 && owner[behind] != i && owner[front] == i) {
-                CAShapeLayer* curve = [CAShapeLayer layer];
-                curve.frame = CGRectMake(x - origin, CORNER_MAX, radius, radius);
-                curve.masksToBounds = YES;
-                CGMutablePathRef path = CGPathCreateMutable();
-                CGPathAddRect(path, NULL, curve.bounds);
-                CGPathAddEllipseInRect(path, NULL, CGRectMake(side ? 0 : -radius, 0, 2 * radius, 2 * radius));
-                curve.path = path;
-                CGPathRelease(path);
-                curve.fillRule = kCAFillRuleEvenOdd;
-                uint32_t c = colors[front];
-                CGFloat components[] = {(c >> 16 & 0xff) / 255.0, (c >> 8 & 0xff) / 255.0, (c & 0xff) / 255.0, 1};
-                CGColorRef color = CGColorCreate(d->space, components);
-                curve.fillColor = color;
-                CGColorRelease(color);
-                [layers addObject:curve];
-                for (size_t x = from; x < to; x++) colors[x] = colors[behind];
-                continue;
-            }
-
-            x = side ? CGRectGetMaxX(bounds[i]) - reach : CGRectGetMinX(bounds[i]);
-            bool overlapped = false;
-            for (int j = 0; j < count && !overlapped; j++)
-                overlapped = j != i && CGRectIntersectsRect(bounds[j], CGRectMake(x, bar_bottom, reach, reach));
-            size_t next = side ? column(d, x) - 1 : column(d, x + reach);
-            if (overlapped || next >= d->width || owner[next] != i || !clean[next]) continue;
-            CALayer* fill = [CALayer layer];
-            fill.frame = CGRectMake(x - origin, CORNER_MAX - reach, reach, reach);
-            fill.contentsRect = CGRectMake((x - origin) / span, 0, reach / span, 1);
-            fill.magnificationFilter = kCAFilterNearest;
-            fill.mask = [CALayer layer];
-            fill.mask.frame = fill.bounds;
-            fill.mask.contents = (__bridge id)corner.mask;
-            if (side) fill.mask.affineTransform = CGAffineTransformMakeScale(-1, 1);
-            [fills addObject:fill];
+            size_t front = side ? from - 1 : to;
+            if (!from || from >= to || to >= width || owner[front] != i) continue;
+            for (size_t c = side ? from : edge; c < (side ? edge + 1 : to); c++) colors[c] = colors[edge];
+            // The window color fills the corner of the square below the arc. The arc is its
+            // only edge in the bar, so no outline of the square shows.
+            CAShapeLayer* curve = [CAShapeLayer layer];
+            curve.frame = CGRectMake(x - origin, CORNER_DEPTH, radius, radius);
+            CGMutablePathRef path = CGPathCreateMutable();
+            CGPathMoveToPoint(path, NULL, side ? radius : 0, 0);
+            CGPathAddArc(path, NULL, side ? radius : 0, radius, radius, -M_PI_2, side ? -M_PI : 0, side);
+            CGPathAddLineToPoint(path, NULL, side ? 0 : radius, 0);
+            CGPathCloseSubpath(path);
+            curve.path = path;
+            CGPathRelease(path);
+            uint32_t c = colors[front];
+            CGFloat components[] = {(c >> 16 & 0xff) / 255.0, (c >> 8 & 0xff) / 255.0, (c & 0xff) / 255.0, 1};
+            CGColorRef color = CGColorCreate(d->space, components);
+            curve.fillColor = color;
+            CGColorRelease(color);
+            [layers addObject:curve];
         }
     }
+    [layers addObject:d.fill];
 
-    CGContextRef bitmap = CGBitmapContextCreate(colors, d->width, 1, 8, d->width * 4, d->space,
+    // The fill covers the transparent part of each corner gap, so the window outline and
+    // its soft edge stay.
+    CGContextRef mask = CGBitmapContextCreate(NULL, width, rows, 8, width, NULL, (CGBitmapInfo)kCGImageAlphaOnly);
+    uint8_t* gaps = CGBitmapContextGetData(mask);
+    for (size_t y = 0; y < rows; y++)
+        for (size_t x = 0; x < width; x++) {
+            uint8_t opaque = 0;
+            for (int i = 0; i < count; i++) opaque = MAX(opaque, alpha[i][y * width + x]);
+            gaps[y * width + x] = colors[x] && y < top[x] ? 255 - opaque : 0;
+        }
+    CGImageRef gaps_image = CGBitmapContextCreateImage(mask);
+    CGContextRelease(mask);
+
+    CGContextRef bitmap = CGBitmapContextCreate(colors, width, 1, 8, width * 4, d->space,
         kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
     CGImageRef image = CGBitmapContextCreateImage(bitmap);
     CGContextRelease(bitmap);
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     d.band.contents = (__bridge id)image;
-    for (CALayer* fill in fills) fill.contents = (__bridge id)image;
-    d.window.contentView.layer.sublayers = [layers arrayByAddingObjectsFromArray:fills];
+    d.fill.contents = (__bridge id)image;
+    d.fill.mask.contents = (__bridge id)gaps_image;
+    d.window.contentView.layer.sublayers = layers;
     [CATransaction commit];
     CGImageRelease(image);
+    CGImageRelease(gaps_image);
 
     // The bar is dark if its mean luma behind the left items is below mid-gray. A
     // transparent column counts as light, so items over the wallpaper stay dark.
     double luma = 0;
     size_t n = 0;
-    for (size_t x = 0; x < d->width; x++) {
+    for (size_t x = 0; x < width; x++) {
         if (!items[x]) continue;
         uint32_t c = colors[x] ? colors[x] : 0xffffffff;
         luma += 0.2126 * (c >> 16 & 0xff) + 0.7152 * (c >> 8 & 0xff) + 0.0722 * (c & 0xff);
@@ -409,37 +242,76 @@ static void compute(Display* d) {
     }
 }
 
-// A capture stream counts as screen sharing, which hides notifications. So take a
-// screenshot when the windows just below the bar change, again until the row stops
-// changing, and every 2 seconds for other color changes in windows. The screenshot
-// leaves out the windows of this helper and the windows above normal windows: menus,
-// banners and the screenshot selection tint.
+// A capture stream counts as screen sharing, which hides notifications. So take
+// screenshots when the windows just below the bar change, again until they stop
+// changing, and every 2 seconds for other color changes in windows. One screenshot reads
+// the screen colors without this helper and the windows above normal windows: menus,
+// banners and the screenshot selection tint. The others read the alpha of each window at
+// the bar bottom alone, which gives its corners. Translucent windows need both: alone,
+// they do not show the blur behind them.
 static void capture(Display* d) {
-    [SCScreenshotManager captureSampleBufferWithFilter:d.filter configuration:d.config
+    size_t width = d->width, rows = d->rows;
+    NSArray* filters = d.filters, * numbers = d.filtered;
+    __block NSData* row = nil;
+    NSMutableArray* shapes = [NSMutableArray new];
+    for (NSUInteger i = 0; i < filters.count; i++) [shapes addObject:NSNull.null];
+    dispatch_group_t group = dispatch_group_create();
+    dispatch_group_enter(group);
+    [SCScreenshotManager captureSampleBufferWithFilter:d.screen configuration:d.row_config
                                      completionHandler:^(CMSampleBufferRef sample, NSError* error) {
-        NSData* middle = nil;
         CVPixelBufferRef buffer = sample ? CMSampleBufferGetImageBuffer(sample) : NULL;
-        if (buffer && CVPixelBufferGetWidth(buffer) >= d->width && CVPixelBufferGetHeight(buffer) >= 3) {
+        if (buffer && CVPixelBufferGetWidth(buffer) >= width && CVPixelBufferGetHeight(buffer) >= 3) {
             CVPixelBufferLockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly);
             const uint8_t* base = CVPixelBufferGetBaseAddress(buffer);
-            middle = [NSData dataWithBytes:base + CVPixelBufferGetBytesPerRow(buffer) length:d->width * 4];
+            row = [NSData dataWithBytes:base + CVPixelBufferGetBytesPerRow(buffer) length:width * 4];
             CVPixelBufferUnlockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly);
         }
-        dispatch_async(dispatch_get_main_queue(), ^{
-            d->capturing = false;
-            bool changed = middle && memcmp(middle.bytes, d->row, d->width * 4) != 0;
-            if (changed) memcpy(d->row, middle.bytes, d->width * 4);
-            d->changing = changed || d->moved;
-            d->moved = false;
-            if (d->changing) compute(d);
-        });
+        dispatch_group_leave(group);
     }];
+    [filters enumerateObjectsUsingBlock:^(SCContentFilter* filter, NSUInteger i, BOOL* stop) {
+        dispatch_group_enter(group);
+        [SCScreenshotManager captureSampleBufferWithFilter:filter configuration:d.shape_config
+                                         completionHandler:^(CMSampleBufferRef sample, NSError* error) {
+            CVPixelBufferRef buffer = sample ? CMSampleBufferGetImageBuffer(sample) : NULL;
+            if (buffer && CVPixelBufferGetWidth(buffer) >= width && CVPixelBufferGetHeight(buffer) >= rows) {
+                CVPixelBufferLockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly);
+                const uint8_t* base = CVPixelBufferGetBaseAddress(buffer);
+                size_t stride = CVPixelBufferGetBytesPerRow(buffer);
+                NSMutableData* alpha = [NSMutableData dataWithLength:width * rows];
+                uint8_t* a = alpha.mutableBytes;
+                for (size_t y = 0; y < rows; y++)
+                    for (size_t x = 0; x < width; x++) a[y * width + x] = base[y * stride + x * 4 + 3];
+                CVPixelBufferUnlockBaseAddress(buffer, kCVPixelBufferLock_ReadOnly);
+                @synchronized (shapes) {
+                    shapes[i] = alpha;
+                }
+            }
+            dispatch_group_leave(group);
+        }];
+    }];
+    dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+        d->capturing = false;
+        bool changed = false;
+        if (row && memcmp(row.bytes, d->row, width * 4)) {
+            memcpy(d->row, row.bytes, width * 4);
+            changed = true;
+        }
+        // Keep the last shapes if a capture failed.
+        if (![shapes containsObject:NSNull.null] && (![shapes isEqualToArray:d.shapes] || ![numbers isEqualToArray:d.shaped])) {
+            d.shapes = shapes;
+            d.shaped = numbers;
+            changed = true;
+        }
+        d->changing = changed || d->moved;
+        d->moved = false;
+        if (d->changing) compute(d);
+    });
 }
 
 static void screenshot(Display* d) {
     if (d->capturing) return;
     d->capturing = true;
-    if (d.filter) {
+    if (d.screen) {
         capture(d);
         return;
     }
@@ -453,10 +325,24 @@ static void screenshot(Display* d) {
         for (SCDisplay* s in content.displays)
             if (s.displayID == d->display_id) display = s;
         NSMutableArray* skip = [NSMutableArray new];
-        for (SCWindow* w in content.windows)
+        NSMutableDictionary* windows = [NSMutableDictionary new];
+        for (SCWindow* w in content.windows) {
             if (w.windowLayer > 0 || w.owningApplication.processID == getpid()) [skip addObject:w];
-        d.filter = [[SCContentFilter alloc] initWithDisplay:display excludingWindows:skip];
+            windows[@(w.windowID)] = w;
+        }
+        NSMutableArray* filters = [NSMutableArray new];
+        NSMutableArray* filtered = [NSMutableArray new];
+        for (NSNumber* number in d.touching) {
+            if (!windows[number]) continue;
+            [filters addObject:[[SCContentFilter alloc] initWithDisplay:display includingWindows:@[windows[number]]]];
+            [filtered addObject:number];
+        }
+        d.screen = [[SCContentFilter alloc] initWithDisplay:display excludingWindows:skip];
+        d.filters = filters;
+        d.filtered = filtered;
         capture(d);
+        // A new window can be missing from the list, so list again next time.
+        if (filtered.count < d.touching.count) d.screen = nil;
     }];
 }
 
@@ -471,22 +357,26 @@ static void tick(void) {
         kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements, kCGNullWindowID));
     pid_t own_pid = getpid();
     for (Display* d in g_displays) {
-        CGRect below = CGRectMake(CGRectGetMinX(d->bounds), CGRectGetMinY(d->bounds) + g_bar_height,
-                                  CGRectGetWidth(d->bounds), CORNER_MAX);
+        double bar_bottom = CGRectGetMinY(d->bounds) + g_bar_height;
+        CGRect below = CGRectMake(CGRectGetMinX(d->bounds), bar_bottom, CGRectGetWidth(d->bounds), CORNER_DEPTH);
         NSMutableArray* numbers = [NSMutableArray new];
+        NSMutableArray* touching = [NSMutableArray new];
         NSMutableArray* windows = [NSMutableArray new];
         for (NSDictionary* w in g_list) {
             CGRect rect;
             CGRectMakeWithDictionaryRepresentation((__bridge CFDictionaryRef)w[(id)kCGWindowBounds], &rect);
             if (!CGRectIntersectsRect(rect, below) || [w[(id)kCGWindowOwnerPID] intValue] == own_pid) continue;
             [numbers addObject:w[(id)kCGWindowNumber]];
+            if ([w[(id)kCGWindowLayer] intValue] == 0 && CGRectGetMinY(rect) == bar_bottom)
+                [touching addObject:w[(id)kCGWindowNumber]];
             [windows addObject:@[w[(id)kCGWindowBounds], w[(id)kCGWindowName] ?: @""]];
         }
-        // The filter leaves out windows by number, so only new or closed windows change
-        // it. Making it again lists all windows on the system.
-        if (![numbers isEqualToArray:d.numbers]) {
+        // The filters name windows, so only new, closed or moved windows change them.
+        // Making them again lists all windows on the system.
+        if (![numbers isEqualToArray:d.numbers] || ![touching isEqualToArray:d.touching]) {
             d.numbers = numbers;
-            d.filter = nil;
+            d.touching = touching;
+            d.screen = nil;
             d->moved = true;
         }
         if (![windows isEqualToArray:d.windows]) {
@@ -509,6 +399,7 @@ static Display* add_display(CGDirectDisplayID display_id) {
     d->scale = (CGFloat)CGDisplayModeGetPixelWidth(mode) / CGDisplayModeGetWidth(mode);
     CGDisplayModeRelease(mode);
     d->width = CGRectGetWidth(d->bounds) * d->scale;
+    d->rows = CORNER_DEPTH * d->scale;
     d->space = CGDisplayCopyColorSpace(d->display_id);
     d->row = calloc(d->width, 4);
     d->colors = calloc(d->width, 4);
@@ -517,8 +408,8 @@ static Display* add_display(CGDirectDisplayID display_id) {
     for (NSScreen* s in NSScreen.screens)
         if ([s.deviceDescription[@"NSScreenNumber"] unsignedIntValue] == d->display_id) frame = s.frame;
     d.window = [[BarWindow alloc]
-        initWithContentRect:NSMakeRect(NSMinX(frame), NSMaxY(frame) - g_bar_height - CORNER_MAX,
-                                       NSWidth(frame), g_bar_height + CORNER_MAX)
+        initWithContentRect:NSMakeRect(NSMinX(frame), NSMaxY(frame) - g_bar_height - CORNER_DEPTH,
+                                       NSWidth(frame), g_bar_height + CORNER_DEPTH)
                   styleMask:NSWindowStyleMaskBorderless
                     backing:NSBackingStoreBuffered
                       defer:NO];
@@ -534,19 +425,34 @@ static Display* add_display(CGDirectDisplayID display_id) {
     view.layer = [CALayer layer];
     view.wantsLayer = YES;
     d.band = [CALayer layer];
-    d.band.frame = CGRectMake(0, CORNER_MAX, CGRectGetWidth(d->bounds), g_bar_height);
+    d.band.frame = CGRectMake(0, CORNER_DEPTH, CGRectGetWidth(d->bounds), g_bar_height);
     d.band.magnificationFilter = kCAFilterNearest;
+    d.fill = [CALayer layer];
+    d.fill.frame = CGRectMake(0, 0, CGRectGetWidth(d->bounds), CORNER_DEPTH);
+    d.fill.magnificationFilter = kCAFilterNearest;
+    d.fill.mask = [CALayer layer];
+    d.fill.mask.frame = d.fill.bounds;
+    view.layer.sublayers = @[d.band, d.fill];
     d.window.contentView = view;
     [d.window orderFrontRegardless];
 
     // Capture three rows and read the middle one. The outer rows can mix with the
     // transparent pixels outside the capture.
-    d.config = [SCStreamConfiguration new];
-    d.config.sourceRect = CGRectMake(0, g_bar_height + SAMPLE_DEPTH - 1 / d->scale, CGRectGetWidth(d->bounds), 3 / d->scale);
-    d.config.width = d->width;
-    d.config.height = 3;
-    d.config.pixelFormat = kCVPixelFormatType_32BGRA;
-    d.config.showsCursor = NO;
+    d.row_config = [SCStreamConfiguration new];
+    d.row_config.sourceRect = CGRectMake(0, g_bar_height + SAMPLE_DEPTH - 1 / d->scale, CGRectGetWidth(d->bounds), 3 / d->scale);
+    d.row_config.width = d->width;
+    d.row_config.height = 3;
+    d.row_config.pixelFormat = kCVPixelFormatType_32BGRA;
+    d.row_config.showsCursor = NO;
+    // Leave out shadows and the wallpaper, so the alpha is the window alone.
+    d.shape_config = [SCStreamConfiguration new];
+    d.shape_config.sourceRect = CGRectMake(0, g_bar_height, CGRectGetWidth(d->bounds), CORNER_DEPTH);
+    d.shape_config.width = d->width;
+    d.shape_config.height = d->rows;
+    d.shape_config.pixelFormat = kCVPixelFormatType_32BGRA;
+    d.shape_config.backgroundColor = CGColorGetConstantColor(kCGColorClear);
+    d.shape_config.ignoreShadowsDisplay = YES;
+    d.shape_config.showsCursor = NO;
     return d;
 }
 
@@ -572,7 +478,6 @@ int main(int argc, char** argv) {
     [NSApplication sharedApplication];
     [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
     g_displays = [NSMutableArray new];
-    g_corners = [NSMutableDictionary new];
 
     // Restart when the displays change.
     CGDisplayRegisterReconfigurationCallback(display_changed, NULL);
