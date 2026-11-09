@@ -7,6 +7,7 @@ return {
         -- Using `require(plugin).load()` (rather than `vim.cmd.colorscheme`) forces
         -- lazy.nvim to load the plugin -- running its opts/setup() -- BEFORE applying,
         -- so the theme's options (transparency, etc.) are in effect on the first apply.
+        -- cutiepro is a local colors/cutiepro.lua, not a plugin, so it loads directly.
         if vim.o.background == "light" then
           require("rose-pine").colorscheme()
         else
