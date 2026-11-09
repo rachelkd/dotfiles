@@ -19,6 +19,9 @@ export PATH="/opt/homebrew/opt/qt@5/bin:$PATH"
 # Local binaries
 export PATH="$HOME/.local/bin:$PATH"
 
+# Rust (Homebrew rustup is keg-only) + cargo-installed binaries (hx plugin fork, forge, steel)
+export PATH="$HOME/.cargo/bin:/opt/homebrew/opt/rustup/bin:$PATH"
+
 # SSL Certificate for Ruby/OpenSSL
 export SSL_CERT_FILE=/etc/ssl/cert.pem
 
@@ -158,4 +161,13 @@ eval "$(starship init zsh)"
 eval "$(fzf --zsh)"
 eval "$(zoxide init --cmd cd zsh)"
 eval "$(rbenv init - zsh)"
+command -v zed >/dev/null && eval "$(zed --completions zsh)"
 command -v herdr >/dev/null && source <(herdr completion zsh)
+
+# ============================================================================
+# Machine-local config (Moab setup, kws, credentials); not in dotfiles
+# ============================================================================
+[ -f "$HOME/.zshrc.local" ] && source "$HOME/.zshrc.local"
+
+# opencode
+export PATH=/Users/rachel/.opencode/bin:$PATH
