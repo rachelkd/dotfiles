@@ -8,6 +8,8 @@
 // command palette (cmd-shift-p / ctrl-shift-p)
 {
   // Appearance
+  "show_signature_help_after_edits": true,
+  "auto_signature_help": true,
   "show_wrap_guides": true,
   "wrap_guides": [100],
   "indent_guides": {
@@ -46,8 +48,8 @@
     }
   },
   "icon_theme": {
-    "mode": "dark",
-    "light": "Catppuccin Latte",
+    "mode": "light",
+    "light": "Catppuccin Mocha",
     "dark": "Catppuccin Mocha"
   },
   "ui_font_size": 16,
@@ -113,7 +115,12 @@
         "!basedpyright",
         "todo-highlight-lsp"
       ]
-    }
+    },
+    "TypeScript": { "formatter": { "language_server": { "name": "oxfmt" } } },
+    "TSX": { "formatter": { "language_server": { "name": "oxfmt" } } },
+    "JavaScript": { "formatter": { "language_server": { "name": "oxfmt" } } },
+    "JSON": { "formatter": { "language_server": { "name": "oxfmt" } } },
+    "JSONC": { "formatter": { "language_server": { "name": "oxfmt" } } }
   },
   // AI agents
   "agent_servers": {
