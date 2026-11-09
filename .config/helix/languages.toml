@@ -31,3 +31,7 @@ name = "tsx"
 language-servers = ["vtsls", "eslint"]
 auto-format = true
 formatter = { command = "/Users/rachel/.config/helix/bin/project-bin", args = ["prettier", "--stdin-filepath", '%sh{basename "%{buffer_name}"}'] }
+
+[[language]]
+name = "markdown"
+soft-wrap = { enable = true }

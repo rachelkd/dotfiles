@@ -36,19 +36,8 @@ C-u = ":half-page-up-smooth"
 pageup = ":page-up-smooth"
 pagedown = ":page-down-smooth"
 
-# Explorer with icons: yazi (Helix has no icon support). Enter opens, q cancels.
-# space e opens on the current file, space E at the working directory.
-# < /dev/tty: Helix gives yazi an empty stdin, which yazi passes to fzf (z), so fzf finds nothing.
 [keys.normal.space]
-e = [
-  ':sh rm -f /tmp/helix-yazi-chooser',
-  ':insert-output yazi "%{buffer_name}" --chooser-file=/tmp/helix-yazi-chooser < /dev/tty',
-  ':sh printf "\x1b[?1049h\x1b[?2004h" > /dev/tty',
-  ':open %sh{cat /tmp/helix-yazi-chooser}',
-  ':redraw',
-  ':set mouse false',
-  ':set mouse true',
-]
+e = ":forest-open"
 E = [
   ':sh rm -f /tmp/helix-yazi-chooser',
   ':insert-output yazi --chooser-file=/tmp/helix-yazi-chooser < /dev/tty',
