@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>dev.rachel.rex-agents</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/rachel/Library/Application Support/com.superlogical.rex/RexServer/Versions/Current/Rex Server.app/Contents/MacOS/rex</string>
+    <string>do</string>
+    <string>/Users/rachel/.config/rex/agents.lua</string>
+    <string>--all</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>/opt/homebrew/bin:/usr/bin:/bin</string>
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>30</integer>
+  <key>StandardOutPath</key><string>/Users/rachel/Library/Logs/rex-agents.log</string>
+  <key>StandardErrorPath</key><string>/Users/rachel/Library/Logs/rex-agents.log</string>
+</dict>
+</plist>
