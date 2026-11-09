@@ -154,6 +154,7 @@ unset __conda_setup
 # ============================================================================
 
 eval "$(starship init zsh)"
+[[ $TERM_PROGRAM == rex ]] && source ~/.config/rex/shell.zsh
 eval "$(fzf --zsh)"
 eval "$(zoxide init --cmd cd zsh)"
 eval "$(rbenv init - zsh)"
