@@ -2,11 +2,22 @@
 -- Default keymaps that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/keymaps.lua
 -- Add any additional keymaps here
 
+local function copy(text)
+  vim.fn.setreg("+", text)
+  vim.notify("Copied: " .. text)
+end
+
 vim.keymap.set("n", "<leader>cy", function()
-  local path = vim.fn.expand("%:.")
-  vim.fn.setreg("+", path)
-  vim.notify("Copied: " .. path)
+  copy(vim.fn.expand("%:."))
 end, { desc = "Copy relative file path" })
+
+vim.keymap.set("n", "<leader>cY", function()
+  copy(vim.fn.expand("%:p"))
+end, { desc = "Copy absolute file path" })
+
+vim.keymap.set("n", "<leader>cL", function()
+  copy(vim.fn.expand("%:.") .. ":" .. vim.fn.line("."))
+end, { desc = "Copy file location" })
 
 -- lazygit writes its final directory to LAZYGIT_NEW_DIR_FILE on quit (Q keeps the old one),
 -- so switching worktrees there also moves Neovim's cwd.
