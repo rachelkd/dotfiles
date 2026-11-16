@@ -9,6 +9,18 @@ for i = 1, 9 do
   rex.bind(p .. i, "client.tab.goto", { index = i })
 end
 
+rex.action{
+  name = "tab_last",
+  title = "Go to Last Tab",
+  description = "Toggles to this session's previously active tab",
+  keywords = "previous recent mru toggle window",
+  run = function(ctx)
+    local last = rex.json.decode(io.open((os.getenv("TMPDIR") or "/tmp/") .. "rex_last_tabs.json"):read("*a"))
+    rex.client.queue("session.select", { session_id = ctx.session_id, window_id = last[ctx.session_id] })
+  end,
+}
+rex.bind(p .. ";", "tab_last")
+
 rex.bind(p .. "v", "pane.split.right")
 rex.bind(p .. "-", "pane.split.down")
 rex.bind(p .. "h", "pane.focus.left")
