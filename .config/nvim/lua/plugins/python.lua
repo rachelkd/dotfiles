@@ -33,6 +33,7 @@ return {
         enabled = true,
         mason = false,
         cmd = venv_cmd("ty", { "server" }),
+        root_markers = { { "ty.toml", "pyproject.toml" }, ".git" },
       })
 
       opts.servers.ruff = vim.tbl_deep_extend("force", opts.servers.ruff or {}, {
