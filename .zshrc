@@ -163,6 +163,7 @@ eval "$(zoxide init --cmd cd zsh)"
 eval "$(rbenv init - zsh)"
 command -v zed >/dev/null && eval "$(zed --completions zsh)"
 command -v herdr >/dev/null && source <(herdr completion zsh)
+command -v rex >/dev/null && source <(rex completion zsh)
 
 # ============================================================================
 # Machine-local config (Moab setup, kws, credentials); not in dotfiles
