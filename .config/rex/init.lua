@@ -12,11 +12,22 @@ end
 rex.action{
   name = "tab_last",
   title = "Go to Last Tab",
-  description = "Toggles to this session's previously active tab",
-  keywords = "previous recent mru toggle window",
+  description = "Toggles to the previously active tab, in any session",
+  keywords = "previous recent mru toggle window session",
   run = function(ctx)
-    local last = rex.json.decode(io.open((os.getenv("TMPDIR") or "/tmp/") .. "rex_last_tabs.json"):read("*a"))
-    rex.client.queue("session.select", { session_id = ctx.session_id, window_id = last[ctx.session_id] })
+    local state_file = (os.getenv("TMPDIR") or "/tmp/") .. "rex_last_tabs.json"
+    local f = io.open(state_file)
+    local state = f and rex.json.decode(f:read("*a")) or {}
+    local here = { session_id = ctx.session_id, window_id = rex.session.view{ session_id = ctx.session_id }.active_window_id }
+    local target = state.last
+    -- Switching sessions sends no event, so tabs.lua may not know we came here from its current tab
+    if not state.current or state.current.window_id ~= here.window_id then target = state.current end
+    if not target then return end
+    -- Record the jump here too: the app sends no event if target is already its session's active tab
+    f = assert(io.open(state_file, "w"))
+    f:write(rex.json.encode{ current = target, last = here })
+    f:close()
+    rex.client.queue("session.select", target)
   end,
 }
 rex.bind(p .. ";", "tab_last")
