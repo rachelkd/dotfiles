@@ -117,6 +117,45 @@ rex.action({
 })
 rex.bind(p .. "shift+g", "lazygit_popup")
 
+-- restore.lua saves each closed tab's layout, with each pane's directory and command
+local function closed_tab_layout(node)
+	if node.direction then
+		return rex.layout[node.direction](node.ratio, closed_tab_layout(node.before), closed_tab_layout(node.after))
+	end
+	return rex.layout.block({
+		flavor = shell,
+		options = { cwd = node.cwd, initial_input = node.command and node.command .. "\n" },
+	})
+end
+
+rex.action({
+	name = "tab_reopen",
+	title = "Reopen Closed Tab",
+	description = "Reopens the last tab closed in this session and reruns what its panes were running",
+	keywords = "undo restore closed tab window",
+	run = function(ctx)
+		local closed_file = (os.getenv("TMPDIR") or "/tmp/") .. "rex_closed_tabs.json"
+		local f = io.open(closed_file)
+		local closed = f and rex.json.decode(f:read("*a")) or {}
+		if f then
+			f:close()
+		end
+		local tab = table.remove(closed[ctx.session_id] or {})
+		if not tab then
+			return
+		end
+		local w, err = rex.session.new_window({ window_label = tab.label, layout = closed_tab_layout(tab.layout) })
+		if err ~= nil then
+			error(err, 0)
+		end
+		f = assert(io.open(closed_file, "w"))
+		f:write(rex.json.encode(closed))
+		f:close()
+		rex.client.queue("session.select", { session_id = ctx.session_id, window_id = w.window_id })
+	end,
+})
+rex.bind("cmd+shift+t", "tab_reopen")
+
 rex.action({
 	name = "kenv",
 	title = "Open k env",

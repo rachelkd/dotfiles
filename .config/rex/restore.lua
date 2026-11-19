@@ -1,13 +1,17 @@
--- Reruns what each pane was running when the Rex server restarted. Rex brings panes back as new
--- shells in the same directory, so this saves each pane's command line (written by shell.zsh) and
--- types it into the new shell. Claude Code panes resume their conversation instead.
+-- Brings back what panes were running, after a Rex server restart and when init.lua's tab_reopen
+-- reopens a closed tab. Rex brings panes back as new shells in the same directory, so this saves
+-- each pane's command line (written by shell.zsh) and types it into the new shell. Claude Code
+-- panes resume their conversation instead.
 -- Run by the launchd job dev.rachel.rex-restore with `rex do restore.lua --all`. The script exits
 -- when the server goes away, and launchd starts it again.
 
 local terminal = "com.superlogical.terminal"
 local tmp = os.getenv("TMPDIR") or "/tmp/"
 local state_file = tmp .. "rex_restore.json"
+local closed_file = tmp .. "rex_closed_tabs.json"
 local panes = {} -- block_id -> { session_id, command }
+local cwds = {} -- block_id -> the directory its shell last reported
+local tabs = {} -- window_id -> { label, layout }, as session.view last showed it
 
 local function read(path)
 	local f = io.open(path)
@@ -17,6 +21,12 @@ local function read(path)
 	local text = f:read("*a")
 	f:close()
 	return text
+end
+
+local function write(path, value)
+	local f = assert(io.open(path, "w"))
+	f:write(rex.json.encode(value))
+	f:close()
 end
 
 -- Read before any handler saves over it
@@ -68,9 +78,36 @@ local function update(session_id, block_id, p)
 end
 
 local function save()
-	local f = assert(io.open(state_file, "w"))
-	f:write(rex.json.encode({ server = server, panes = panes }))
-	f:close()
+	write(state_file, { server = server, panes = panes })
+end
+
+-- Shells report their directory (OSC 7) as file://host/path
+local function set_cwd(block_id, url)
+	cwds[block_id] = url and url:gsub("^file://[^/]*", "")
+end
+
+-- A window's layout is gone by the time its window_closed event arrives, so keep a copy
+local function cache_tabs(session_id)
+	local view = rex.session.view({ session_id = session_id })
+	for _, w in ipairs(view and view.windows or {}) do
+		-- An unnamed tab shows a made-up "Window <id>" label, which a reopened tab shouldn't keep
+		local label = w.label ~= "Window " .. w.window_id:sub(-8) and w.label or nil
+		for _, layer in ipairs(w.layers) do
+			if layer.kind == "tiled" then
+				tabs[w.window_id] = { label = label, layout = layer.layout }
+			end
+		end
+	end
+end
+
+-- A closed tab's layout, with each pane's directory and command in place of its block
+local function describe(node)
+	if node.split then
+		local s = node.split
+		return { direction = s.direction, ratio = s.ratio, before = describe(s.before), after = describe(s.after) }
+	end
+	local pane = panes[node.block_id]
+	return { cwd = cwds[node.block_id], command = pane and pane.command }
 end
 
 -- After a server restart, types each saved command into its pane, unless the pane already runs something
@@ -100,7 +137,31 @@ rex.on("terminal.program_status_changed", function(ctx)
 		save()
 	end
 end)
+rex.on("terminal.pwd_changed", function(ctx, ev)
+	set_cwd(ctx.block_id, ev.pwd)
+end)
+rex.on("session_view_changed", function(ctx)
+	cache_tabs(ctx.session_id)
+end)
+-- Arrives before its panes' block_closed events, so their commands and directories are still known
+rex.on("window_closed", function(ctx, ev)
+	local tab = tabs[ev.window_id]
+	tabs[ev.window_id] = nil
+	if not tab then
+		return
+	end
+	-- tab_reopen also writes this file, so read it fresh
+	local closed = rex.json.decode(read(closed_file) or "{}") or {}
+	local list = closed[ctx.session_id] or {}
+	table.insert(list, { label = tab.label, layout = describe(tab.layout) })
+	if #list > 20 then
+		table.remove(list, 1)
+	end
+	closed[ctx.session_id] = list
+	write(closed_file, closed)
+end)
 rex.on("block_closed", function(_, ev)
+	cwds[ev.block_id] = nil
 	if panes[ev.block_id] then
 		panes[ev.block_id] = nil
 		save()
@@ -109,9 +170,12 @@ end)
 rex.after(0, function()
 	restore()
 	for _, s in ipairs(rex.call("session.list").sessions) do
+		cache_tabs(s.session_id)
 		local list = rex.call("session.list_blocks", { session_id = s.session_id })
 		for _, b in ipairs(list and list.blocks or {}) do
 			update(s.session_id, b.block_id, process(s.session_id, b.block_id))
+			local pwd = rex.block.call(terminal, "pwd", { session_id = s.session_id, block_id = b.block_id })
+			set_cwd(b.block_id, pwd and pwd.pwd)
 		end
 	end
 	save()
