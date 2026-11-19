@@ -1,0 +1,14 @@
+#!/bin/bash
+# Git's ssh command (core.sshCommand). If GitHub refuses the repo for the work
+# key, retry with the personal key's host alias from ~/.ssh/config. GitHub
+# refuses before any git data is sent, so the retry is safe.
+err=$(mktemp)
+trap 'rm -f "$err"' EXIT
+ssh "$@" 2>"$err"
+status=$?
+if [ "$status" -ne 0 ] && grep -qE 'Repository not found|Permission to .* denied' "$err"; then
+  ssh "${@/%git@github.com/git@github.com-personal}"
+  exit
+fi
+cat "$err" >&2
+exit "$status"
