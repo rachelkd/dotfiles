@@ -1,10 +1,19 @@
 # Reports the directory (OSC 7) and each prompt (OSC 133) to Rex, and marks a
 # command that ran 10s or more as done or error (OSC 7501) so its tab is flagged.
 # Ctrl+C (exit 130) isn't marked.
+# Also saves the running command line for restore.lua, which reruns it after a
+# server restart. Only the pane's own login shell saves, not shells inside its
+# programs, such as nvim's terminal.
+
+if [[ -o login ]]; then
+  _rex_command_file=${TMPDIR:-/tmp/}rex_commands/$REX_BLOCK
+  [[ -d ${_rex_command_file:h} ]] || mkdir -p ${_rex_command_file:h}
+fi
 
 _rex_preexec() {
   _rex_cmd=$1
   _rex_start=$SECONDS
+  [[ -n $_rex_command_file ]] && print -rn -- "$1" >| $_rex_command_file
 }
 
 _rex_precmd() {
