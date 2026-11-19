@@ -6,30 +6,37 @@ rex.bind(p .. "p", "client.tab.previous")
 rex.bind(p .. "shift+x", "client.tab.close")
 rex.bind(p .. "shift+t", "client.tab.rename")
 for i = 1, 9 do
-  rex.bind(p .. i, "client.tab.goto", { index = i })
+	rex.bind(p .. i, "client.tab.goto", { index = i })
 end
 
-rex.action{
-  name = "tab_last",
-  title = "Go to Last Tab",
-  description = "Toggles to the previously active tab, in any session",
-  keywords = "previous recent mru toggle window session",
-  run = function(ctx)
-    local state_file = (os.getenv("TMPDIR") or "/tmp/") .. "rex_last_tabs.json"
-    local f = io.open(state_file)
-    local state = f and rex.json.decode(f:read("*a")) or {}
-    local here = { session_id = ctx.session_id, window_id = rex.session.view{ session_id = ctx.session_id }.active_window_id }
-    local target = state.last
-    -- Switching sessions sends no event, so tabs.lua may not know we came here from its current tab
-    if not state.current or state.current.window_id ~= here.window_id then target = state.current end
-    if not target then return end
-    -- Record the jump here too: the app sends no event if target is already its session's active tab
-    f = assert(io.open(state_file, "w"))
-    f:write(rex.json.encode{ current = target, last = here })
-    f:close()
-    rex.client.queue("session.select", target)
-  end,
-}
+rex.action({
+	name = "tab_last",
+	title = "Go to Last Tab",
+	description = "Toggles to the previously active tab, in any session",
+	keywords = "previous recent mru toggle window session",
+	run = function(ctx)
+		local state_file = (os.getenv("TMPDIR") or "/tmp/") .. "rex_last_tabs.json"
+		local f = io.open(state_file)
+		local state = f and rex.json.decode(f:read("*a")) or {}
+		local here = {
+			session_id = ctx.session_id,
+			window_id = rex.session.view({ session_id = ctx.session_id }).active_window_id,
+		}
+		local target = state.last
+		-- Switching sessions sends no event, so tabs.lua may not know we came here from its current tab
+		if not state.current or state.current.window_id ~= here.window_id then
+			target = state.current
+		end
+		if not target then
+			return
+		end
+		-- Record the jump here too: the app sends no event if target is already its session's active tab
+		f = assert(io.open(state_file, "w"))
+		f:write(rex.json.encode({ current = target, last = here }))
+		f:close()
+		rex.client.queue("session.select", target)
+	end,
+})
 rex.bind(p .. ";", "tab_last")
 
 rex.bind(p .. "v", "pane.split.right")
@@ -71,88 +78,97 @@ rex.mode("navigate", { exclusive = true })
 
 rex.bind(p .. "ctrl+b", "pane.send_key", { key = "ctrl+b" })
 
-rex.action{
-  name = "send_insert",
-  title = "Send Insert",
-  description = "Presses Insert in the focused pane, which copies the selection in pspg.",
-  keywords = "ins pspg copy yank",
-  run = function()
-    rex.client.queue("pane.send_key", { key = "insert" })
-  end,
-}
+rex.action({
+	name = "send_insert",
+	title = "Send Insert",
+	description = "Presses Insert in the focused pane, which copies the selection in pspg.",
+	keywords = "ins pspg copy yank",
+	run = function()
+		rex.client.queue("pane.send_key", { key = "insert" })
+	end,
+})
 rex.bind(p .. "y", "send_insert")
 
 local terminal = "com.superlogical.terminal"
 local shell = "com.superlogical.terminal.shell"
 
-rex.action{
-  name = "lazygit_popup",
-  title = "Lazygit Popup",
-  description = "Opens lazygit in a floating pane, in the focused pane's directory. Quitting lazygit closes it.",
-  keywords = "git diff review float",
-  run = function(ctx)
-    local proc, err = rex.block.call(terminal, "process", { block_id = ctx.block_id })
-    if err ~= nil then error(err, 0) end
-    local _, err = rex.session.new_layer{
-      bounds = { 0.05, 0.05, 0.9, 0.9 },
-      focus = true,
-      layout = rex.layout.block{
-        flavor = shell,
-        options = { command = { "lazygit" }, cwd = proc.foreground and proc.foreground.cwd },
-      },
-    }
-    if err ~= nil then error(err, 0) end
-  end,
-}
+rex.action({
+	name = "lazygit_popup",
+	title = "Lazygit Popup",
+	description = "Opens lazygit in a floating pane, in the focused pane's directory. Quitting lazygit closes it.",
+	keywords = "git diff review float",
+	run = function(ctx)
+		local proc, err = rex.block.call(terminal, "process", { block_id = ctx.block_id })
+		if err ~= nil then
+			error(err, 0)
+		end
+		local _, err = rex.session.new_layer({
+			bounds = { 0.05, 0.05, 0.9, 0.9 },
+			focus = true,
+			layout = rex.layout.block({
+				flavor = shell,
+				options = { command = { "lazygit" }, cwd = proc.foreground and proc.foreground.cwd },
+			}),
+		})
+		if err ~= nil then
+			error(err, 0)
+		end
+	end,
+})
 rex.bind(p .. "shift+g", "lazygit_popup")
 
--- Rex version of kws: one session per k env, labeled N, with the same tabs
-rex.action{
-  name = "kenv",
-  title = "Open k env",
-  description = "Shows the session for ~/code/kenv/N, creating it with shell, nvim, git, logs, db and agents tabs.",
-  keywords = "kws env worktree workspace",
-  args = { n = "integer" },
-  run = function(ctx, args)
-    local label = tostring(args.n)
-    local dir = os.getenv("HOME") .. "/code/kenv/" .. label .. "/core"
-    if not rex.exec{ "test", "-d", dir }.ok then error("no k env at " .. dir, 0) end
+rex.action({
+	name = "kenv",
+	title = "Open k env",
+	description = "Shows the session for ~/code/kenv/N, creating it with shell, nvim, git, logs, db and agents tabs.",
+	keywords = "kws env worktree workspace",
+	args = { n = "integer" },
+	run = function(ctx, args)
+		local label = tostring(args.n)
+		local dir = os.getenv("HOME") .. "/code/kenv/" .. label .. "/core"
+		if not rex.exec({ "test", "-d", dir }).ok then
+			error("no k env at " .. dir, 0)
+		end
 
-    local list, err = rex.call("session.list")
-    if err ~= nil then error(err, 0) end
-    for _, s in ipairs(list.sessions) do
-      if s.label == label then
-        rex.client.queue("session.select", { session_id = s.session_id })
-        return
-      end
-    end
+		local list, err = rex.call("session.list")
+		if err ~= nil then
+			error(err, 0)
+		end
+		for _, s in ipairs(list.sessions) do
+			if s.label == label then
+				rex.client.queue("session.select", { session_id = s.session_id })
+				return
+			end
+		end
 
-    local tabs = {
-      { "shell" },
-      { "nvim", "nvim ." },
-      { "git", "lazygit" },
-      { "logs", "docker compose logs -f --tail 200 api" },
-      { "db", "db-local" },
-      { "agents" },
-    }
-    local windows = {}
-    for i, tab in ipairs(tabs) do
-      windows[i] = {
-        window_label = tab[1],
-        layout = rex.layout.block{
-          flavor = shell,
-          options = { cwd = dir, initial_input = tab[2] and tab[2] .. "\n" },
-        },
-      }
-    end
-    local created, err = rex.call("session.create", { label = label, initial_windows = windows })
-    if err ~= nil then error(err, 0) end
-    rex.client.queue("session.select", {
-      session_id = created.session_id,
-      window_id = created.initial_windows[1].window_id,
-    })
-  end,
-}
+		local tabs = {
+			{ "shell" },
+			{ "nvim", "nvim ." },
+			{ "git", "lazygit" },
+			{ "logs", "docker compose logs -f --tail 200 api" },
+			{ "db", "db-local" },
+			{ "agents" },
+		}
+		local windows = {}
+		for i, tab in ipairs(tabs) do
+			windows[i] = {
+				window_label = tab[1],
+				layout = rex.layout.block({
+					flavor = shell,
+					options = { cwd = dir, initial_input = tab[2] and tab[2] .. "\n" },
+				}),
+			}
+		end
+		local created, err = rex.call("session.create", { label = label, initial_windows = windows })
+		if err ~= nil then
+			error(err, 0)
+		end
+		rex.client.queue("session.select", {
+			session_id = created.session_id,
+			window_id = created.initial_windows[1].window_id,
+		})
+	end,
+})
 for i = 1, 9 do
-  rex.bind(p .. "e>" .. i, "kenv", { n = i })
+	rex.bind(p .. "e>" .. i, "kenv", { n = i })
 end
