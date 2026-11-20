@@ -166,7 +166,7 @@ command -v herdr >/dev/null && source <(herdr completion zsh)
 command -v rex >/dev/null && source <(rex completion zsh)
 
 # ============================================================================
-# Machine-local config (Moab setup, kws, credentials); not in dotfiles
+# Machine-local config
 # ============================================================================
 [ -f "$HOME/.zshrc.local" ] && source "$HOME/.zshrc.local"
 
