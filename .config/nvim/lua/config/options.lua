@@ -14,7 +14,6 @@ vim.opt.mousescroll = "ver:1,hor:2"
 -- response is binary/huge and causes a multi-second freeze (terminals that ignore
 -- the query, like VSCode/Cursor's, freeze until timeout). So:
 --   * SSH: OSC 52 for both copy and paste (no other way to reach the local clipboard).
---   * herdr locally on macOS: OSC 52 for copy, pbpaste for paste (read the Mac clipboard directly).
 --   * Otherwise: leave Neovim's default provider (pbcopy/pbpaste) alone.
 -- Skip inside VSCode/Cursor entirely; vscode-neovim has its own native clipboard provider.
 if not vim.g.vscode then
@@ -26,12 +25,6 @@ if not vim.g.vscode then
       name = "OSC 52",
       copy = copy,
       paste = { ["+"] = osc52.paste("+"), ["*"] = osc52.paste("*") },
-    }
-  elseif os.getenv("HERDR_ENV") and vim.fn.has("mac") == 1 then
-    vim.g.clipboard = {
-      name = "OSC 52 (copy) + pbpaste",
-      copy = copy,
-      paste = { ["+"] = { "pbpaste" }, ["*"] = { "pbpaste" } },
     }
   end
 end
