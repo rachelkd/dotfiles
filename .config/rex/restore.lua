@@ -12,6 +12,8 @@ local closed_file = tmp .. "rex_closed_tabs.json"
 local panes = {} -- block_id -> { session_id, command }
 local cwds = {} -- block_id -> the directory its shell last reported
 local tabs = {} -- window_id -> { label, layout }, as session.view last showed it
+local quiet = {} -- block_id -> pane: Claudes restore() resumed that haven't reported a status yet
+local exiting = {} -- block_id -> pane: quiet Claudes being quit, to resume once their shell is back
 
 local function read(path)
 	local f = io.open(path)
@@ -110,6 +112,28 @@ local function describe(node)
 	return { cwd = cwds[node.block_id], command = pane and pane.command }
 end
 
+local function send(block_id, pane, data)
+	rex.block.call(terminal, "write", { session_id = pane.session_id, block_id = block_id, data = data })
+end
+
+-- Claude Code asks the terminal at startup whether it takes status reports (OSC 7501), and turns them
+-- off for good if Rex answers late, as it can just after a restart. Rex and kyuroom then show no status
+-- for that pane, so a resumed Claude that hasn't reported yet is quit, and resumed again by the
+-- process_changed handler once its shell is back.
+local function retry_quiet()
+	for block_id, pane in pairs(quiet) do
+		local proc = job(process(pane.session_id, block_id))
+		if proc and proc.argv0 == "claude" then
+			exiting[block_id] = pane
+			send(block_id, pane, "/exit")
+			-- Typed together, Claude would read the Enter as part of a paste
+			rex.sleep(0.2)
+			send(block_id, pane, "\r")
+		end
+	end
+	quiet = {}
+end
+
 -- After a server restart, types each saved command into its pane, unless the pane already runs something
 local function restore()
 	if saved.server == server then
@@ -117,22 +141,29 @@ local function restore()
 	end
 	for block_id, pane in pairs(saved.panes or {}) do
 		if not job(process(pane.session_id, block_id)) then
-			rex.block.call(terminal, "write", {
-				session_id = pane.session_id,
-				block_id = block_id,
-				data = pane.command .. "\n",
-			})
+			send(block_id, pane, pane.command .. "\n")
+			if pane.command:match("^claude ") then
+				quiet[block_id] = pane
+			end
 		end
 	end
+	-- A Claude whose check worked reports within about 2 seconds
+	rex.after(10, retry_quiet)
 end
 
 rex.on("terminal.process_changed", function(ctx, ev)
+	local pane = exiting[ctx.block_id]
+	if pane and not job(ev) then
+		exiting[ctx.block_id] = nil
+		send(ctx.block_id, pane, pane.command .. "\n")
+	end
 	if update(ctx.session_id, ctx.block_id, ev) then
 		save()
 	end
 end)
 -- Claude Code reports its status as it works, which also catches a /clear or /resume changing its session
 rex.on("terminal.program_status_changed", function(ctx)
+	quiet[ctx.block_id] = nil
 	if update(ctx.session_id, ctx.block_id, process(ctx.session_id, ctx.block_id)) then
 		save()
 	end
