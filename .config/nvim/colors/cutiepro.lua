@@ -1,5 +1,5 @@
 -- cutiepro for Neovim: the cutiepro Zed port (github.com/wakaranakattari/cutiepro-zed,
--- themes/cutiepro.json) with its exact colors, like Helix's themes/cutiepro.toml. The editor has no
+-- themes/cutiepro.json) with its exact colors. The editor has no
 -- background, so Ghostty's (#181818) shows through; Zed colors with alpha (#rrggbbaa) are blended
 -- onto #181818, as Zed draws them.
 

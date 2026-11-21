@@ -19,7 +19,7 @@ export PATH="/opt/homebrew/opt/qt@5/bin:$PATH"
 # Local binaries
 export PATH="$HOME/.local/bin:$PATH"
 
-# Rust (Homebrew rustup is keg-only) + cargo-installed binaries (hx plugin fork, forge, steel)
+# Rust (Homebrew rustup is keg-only) + cargo-installed binaries
 export PATH="$HOME/.cargo/bin:/opt/homebrew/opt/rustup/bin:$PATH"
 
 # SSL Certificate for Ruby/OpenSSL
