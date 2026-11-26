@@ -10,12 +10,18 @@
 -- Auto-switch colorscheme when background changes (e.g. system dark/light mode toggle)
 vim.api.nvim_create_autocmd("OptionSet", {
   pattern = "background",
+  -- Without nested, :colorscheme skips the ColorScheme event, so plugins (bufferline, blink.cmp,
+  -- gitsigns) never re-add the highlights it just cleared.
+  nested = true,
   callback = function()
     local target_scheme = vim.o.background == "light" and "rose-pine" or "cutiepro"
     -- local target_scheme = vim.o.background == "light" and "rose-pine" or "catppuccin"
+    -- cutiepro's reload sets 'background' back to dark, so Neovim unsets g:colors_name and rose-pine
+    -- skips its own `hi clear`, leaving cutiepro colors behind. Clear first.
+    vim.cmd.highlight("clear")
     local ok = pcall(vim.cmd.colorscheme, target_scheme)
     if not ok then
-      vim.notify("Colorscheme " .. target_scheme .. " not found, keeping current theme", vim.log.levels.WARN)
+      vim.notify("Colorscheme " .. target_scheme .. " not found", vim.log.levels.WARN)
     end
   end,
 })
